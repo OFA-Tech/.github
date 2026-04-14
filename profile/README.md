@@ -2,6 +2,8 @@
 
 **Building scalable systems, automation pipelines, and modern software solutions.**
 
+![GitHub Org Stats](https://github-readme-stats.vercel.app/api?username=OFA-Tech)
+
 ---
 
 ## 🧠 What we do
