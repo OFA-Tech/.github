@@ -1,0 +1,139 @@
+name: Stage - SonarQube
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: Programming language (dotnet, node, java, python, go, php, cpp)
+        required: true
+        type: string
+      language-version:
+        description: Runtime version
+        required: false
+        type: string
+        default: ""
+      java-distribution:
+        description: JDK distribution for Java
+        required: false
+        type: string
+        default: ""
+      working-directory:
+        description: Working directory for analysis
+        required: false
+        type: string
+        default: .
+      runner:
+        description: Runner label
+        required: false
+        type: string
+        default: ubuntu-latest
+      sonar-project-key:
+        description: SonarQube project key
+        required: false
+        type: string
+        default: ""
+      sonar-project-name:
+        description: SonarQube project name
+        required: false
+        type: string
+        default: ""
+      sonar-sources:
+        description: Sonar sources path
+        required: false
+        type: string
+        default: .
+      sonar-command:
+        description: Optional custom Sonar command (used when provided)
+        required: false
+        type: string
+        default: ""
+      enforce-quality-gate:
+        description: Fail stage if quality gate is red
+        required: false
+        type: boolean
+        default: false
+      sonar-token:
+        description: Optional Sonar token override (use secrets when possible)
+        required: false
+        type: string
+        default: ""
+      sonar-host-url:
+        description: Optional Sonar host URL override
+        required: false
+        type: string
+        default: ""
+    secrets:
+      sonar-token:
+        required: false
+      sonar-host-url:
+        required: false
+
+jobs:
+  sonar:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+
+    env:
+      RESOLVED_SONAR_TOKEN: ${{ secrets.sonar-token != '' && secrets.sonar-token || inputs.sonar-token != '' && inputs.sonar-token || secrets.SONAR_TOKEN }}
+      RESOLVED_SONAR_HOST_URL: ${{ secrets.sonar-host-url != '' && secrets.sonar-host-url || inputs.sonar-host-url != '' && inputs.sonar-host-url || vars.SONAR_HOST_URL }}
+      RESOLVED_SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key != '' && inputs.sonar-project-key || vars.SONAR_PROJECT_KEY }}
+      RESOLVED_SONAR_PROJECT_NAME: ${{ inputs.sonar-project-name != '' && inputs.sonar-project-name || vars.SONAR_PROJECT_NAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Sonar configuration
+        if: ${{ env.RESOLVED_SONAR_TOKEN == '' || env.RESOLVED_SONAR_HOST_URL == '' || env.RESOLVED_SONAR_PROJECT_KEY == '' }}
+        shell: bash
+        run: |
+          echo "Missing Sonar configuration. Ensure token, host URL and project key are available via inputs, secrets, or org/repo vars." >&2
+          exit 1
+
+      - name: Resolve language defaults
+        id: defaults
+        uses: ./actions/resolve-language-defaults
+        with:
+          language: ${{ inputs.language }}
+          version: ${{ inputs.language-version }}
+          distribution: ${{ inputs.java-distribution }}
+
+      - name: Setup runtime
+        uses: ./actions/setup-runtime
+        with:
+          language: ${{ steps.defaults.outputs.language }}
+          version: ${{ steps.defaults.outputs.version }}
+          distribution: ${{ steps.defaults.outputs.distribution }}
+
+      - name: Run custom Sonar command
+        if: ${{ inputs.sonar-command != '' }}
+        uses: ./actions/run-command
+        with:
+          command: ${{ inputs.sonar-command }}
+          working-directory: ${{ inputs.working-directory }}
+        env:
+          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.RESOLVED_SONAR_HOST_URL }}
+
+      - name: Run Sonar scan action
+        if: ${{ inputs.sonar-command == '' }}
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.RESOLVED_SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ${{ inputs.working-directory }}
+          args: >-
+            -Dsonar.projectKey=${{ env.RESOLVED_SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=${{ env.RESOLVED_SONAR_PROJECT_NAME }}
+            -Dsonar.sources=${{ inputs.sonar-sources }}
+
+      - name: Enforce quality gate
+        if: ${{ inputs.enforce-quality-gate && inputs.sonar-command == '' }}
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}

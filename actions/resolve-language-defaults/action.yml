@@ -1,0 +1,116 @@
+name: Resolve Language Defaults
+description: Resolves default version, distribution and commands for a selected language, allowing explicit overrides.
+inputs:
+  language:
+    description: Programming language (dotnet, node, java, python, go, php, cpp)
+    required: true
+  version:
+    description: Optional runtime version override
+    required: false
+    default: ""
+  distribution:
+    description: Optional Java distribution override
+    required: false
+    default: ""
+  build-command:
+    description: Optional build command override
+    required: false
+    default: ""
+  test-command:
+    description: Optional test command override
+    required: false
+    default: ""
+outputs:
+  language:
+    description: Normalized language
+    value: ${{ steps.resolve.outputs.language }}
+  version:
+    description: Resolved runtime version
+    value: ${{ steps.resolve.outputs.version }}
+  distribution:
+    description: Resolved Java distribution
+    value: ${{ steps.resolve.outputs.distribution }}
+  build-command:
+    description: Resolved build command
+    value: ${{ steps.resolve.outputs.build-command }}
+  test-command:
+    description: Resolved test command
+    value: ${{ steps.resolve.outputs.test-command }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve defaults by language
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        language_raw="${{ inputs.language }}"
+        language="$(echo "$language_raw" | tr '[:upper:]' '[:lower:]')"
+
+        input_version="${{ inputs.version }}"
+        input_distribution="${{ inputs.distribution }}"
+        input_build="${{ inputs.build-command }}"
+        input_test="${{ inputs.test-command }}"
+
+        default_version=""
+        default_distribution=""
+        default_build=""
+        default_test=""
+
+        case "$language" in
+          dotnet)
+            default_version="10.x"
+            default_build="dotnet restore && dotnet build --configuration Release --no-restore"
+            default_test="dotnet test --configuration Release --no-build --verbosity normal"
+            ;;
+          node)
+            default_version="20"
+            default_build="npm ci && npm run build --if-present"
+            default_test="npm test --if-present"
+            ;;
+          java)
+            default_version="21"
+            default_distribution="temurin"
+            default_build="./mvnw -B -DskipTests package || mvn -B -DskipTests package"
+            default_test="./mvnw -B test || mvn -B test"
+            ;;
+          python)
+            default_version="3.12"
+            default_build="python -m pip install --upgrade pip && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi"
+            default_test="pytest -q"
+            ;;
+          go)
+            default_version="1.22"
+            default_build="go mod download && go build ./..."
+            default_test="go test ./..."
+            ;;
+          php)
+            default_version="8.3"
+            default_build="if [ -f composer.json ]; then composer install --no-interaction --no-progress --prefer-dist; fi"
+            default_test="if [ -f vendor/bin/phpunit ]; then vendor/bin/phpunit; else php -v; fi"
+            ;;
+          cpp)
+            default_version="stable"
+            default_build="cmake -S . -B build && cmake --build build --config Release"
+            default_test="ctest --test-dir build --output-on-failure"
+            ;;
+          *)
+            echo "Unsupported language: $language_raw" >&2
+            echo "Supported values: dotnet, node, java, python, go, php, cpp" >&2
+            exit 1
+            ;;
+        esac
+
+        resolved_version="${input_version:-$default_version}"
+        resolved_distribution="${input_distribution:-$default_distribution}"
+        resolved_build="${input_build:-$default_build}"
+        resolved_test="${input_test:-$default_test}"
+
+        {
+          echo "language=$language"
+          echo "version=$resolved_version"
+          echo "distribution=$resolved_distribution"
+          echo "build-command=$resolved_build"
+          echo "test-command=$resolved_test"
+        } >> "$GITHUB_OUTPUT"

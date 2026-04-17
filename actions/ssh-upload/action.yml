@@ -1,0 +1,50 @@
+name: SSH Upload
+description: Uploads files to a remote server using SCP over SSH.
+inputs:
+  host:
+    description: Remote host name or IP
+    required: true
+  port:
+    description: Remote SSH port
+    required: false
+    default: "22"
+  username:
+    description: SSH username
+    required: true
+  ssh-private-key:
+    description: SSH private key content
+    required: true
+  source:
+    description: Local source path or glob
+    required: true
+  target:
+    description: Remote destination path
+    required: true
+  strip-components:
+    description: Number of source path components to strip
+    required: false
+    default: "0"
+  overwrite:
+    description: Overwrite files at destination
+    required: false
+    default: "true"
+  clean-remote:
+    description: Remove target directory before upload
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Upload via SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ inputs.host }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        key: ${{ inputs.ssh-private-key }}
+        source: ${{ inputs.source }}
+        target: ${{ inputs.target }}
+        strip_components: ${{ inputs.strip-components }}
+        overwrite: ${{ inputs.overwrite }}
+        rm: ${{ inputs.clean-remote }}

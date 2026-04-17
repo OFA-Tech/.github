@@ -1,0 +1,30 @@
+name: SSH Command
+description: Execute commands on a remote server over SSH.
+inputs:
+  host:
+    description: Remote host name or IP
+    required: true
+  port:
+    description: Remote SSH port
+    required: false
+    default: "22"
+  username:
+    description: SSH username
+    required: true
+  ssh-private-key:
+    description: SSH private key content
+    required: true
+  script:
+    description: Shell script to execute remotely
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Execute remote script
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ inputs.host }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        key: ${{ inputs.ssh-private-key }}
+        script: ${{ inputs.script }}

@@ -1,0 +1,66 @@
+name: Stage - Test
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: Programming language (dotnet, node, java, python, go, php, cpp)
+        required: true
+        type: string
+      language-version:
+        description: Runtime version
+        required: false
+        type: string
+        default: ""
+      java-distribution:
+        description: JDK distribution for Java tests
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Optional test command override
+        required: false
+        type: string
+        default: ""
+      working-directory:
+        description: Working directory for commands
+        required: false
+        type: string
+        default: .
+      runner:
+        description: Runner label
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  test:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve language defaults
+        id: defaults
+        uses: ./actions/resolve-language-defaults
+        with:
+          language: ${{ inputs.language }}
+          version: ${{ inputs.language-version }}
+          distribution: ${{ inputs.java-distribution }}
+          test-command: ${{ inputs.test-command }}
+
+      - name: Setup runtime
+        uses: ./actions/setup-runtime
+        with:
+          language: ${{ steps.defaults.outputs.language }}
+          version: ${{ steps.defaults.outputs.version }}
+          distribution: ${{ steps.defaults.outputs.distribution }}
+
+      - name: Run tests
+        uses: ./actions/run-command
+        with:
+          command: ${{ steps.defaults.outputs.test-command }}
+          working-directory: ${{ inputs.working-directory }}

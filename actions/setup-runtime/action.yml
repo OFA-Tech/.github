@@ -1,0 +1,58 @@
+name: Setup Runtime
+description: Sets up the requested programming language runtime for CI jobs.
+inputs:
+  language:
+    description: Programming language (dotnet, node, java, python, go, php, cpp)
+    required: true
+  version:
+    description: "Runtime version (Example: 10.x, 20, 21, 3.14)"
+    required: true
+  distribution:
+    description: "Distribution (Example: temurin, zulu, corretto, etc. )"
+    required: false
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      if: ${{ inputs.language == 'dotnet' }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.version }}
+
+    - name: Setup Node.js
+      if: ${{ inputs.language == 'node' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.version }}
+
+    - name: Setup Java
+      if: ${{ inputs.language == 'java' }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.version }}
+
+    - name: Setup Python
+      if: ${{ inputs.language == 'python' }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.version }}
+
+    - name: Setup Go
+      if: ${{ inputs.language == 'go' }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.version }}
+
+    - name: Setup PHP
+      if: ${{ inputs.language == 'php' }}
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.version }}
+
+    - name: Setup C/C++ toolchain (Ubuntu)
+      if: ${{ inputs.language == 'cpp' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build

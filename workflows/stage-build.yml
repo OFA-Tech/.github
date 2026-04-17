@@ -1,0 +1,88 @@
+name: Stage - Build
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: Programming language (dotnet, node, java, python, go, php, cpp)
+        required: true
+        type: string
+      language-version:
+        description: Runtime version
+        required: false
+        type: string
+        default: ""
+      distribution:
+        description: Distribution for builds
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: Optional build command override
+        required: false
+        type: string
+        default: ""
+      working-directory:
+        description: Working directory for commands
+        required: false
+        type: string
+        default: .
+      runner:
+        description: Runner label
+        required: false
+        type: string
+        default: ubuntu-latest
+      upload-artifact:
+        description: Upload artifact after build
+        required: false
+        type: boolean
+        default: false
+      artifact-name:
+        description: Artifact name
+        required: false
+        type: string
+        default: build-output
+      artifact-path:
+        description: Path or glob to upload
+        required: false
+        type: string
+        default: .
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve language defaults
+        id: defaults
+        uses: ./actions/resolve-language-defaults
+        with:
+          language: ${{ inputs.language }}
+          version: ${{ inputs.language-version }}
+          distribution: ${{ inputs.distribution }}
+          build-command: ${{ inputs.build-command }}
+
+      - name: Setup runtime
+        uses: ./actions/setup-runtime
+        with:
+          language: ${{ steps.defaults.outputs.language }}
+          version: ${{ steps.defaults.outputs.version }}
+          distribution: ${{ steps.defaults.outputs.distribution }}
+
+      - name: Build
+        uses: ./actions/run-command
+        with:
+          command: ${{ steps.defaults.outputs.build-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Upload build artifact
+        if: ${{ inputs.upload-artifact }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}

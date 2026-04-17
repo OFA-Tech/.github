@@ -1,0 +1,109 @@
+name: Stage - Docker
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: Resolved image repository
+        value: ${{ jobs.docker.outputs.image }}
+      version:
+        description: Resolved image version
+        value: ${{ jobs.docker.outputs.version }}
+      image-version-tag:
+        description: Resolved image version tag
+        value: ${{ jobs.docker.outputs.image-version-tag }}
+      image-latest-tag:
+        description: Resolved image latest tag
+        value: ${{ jobs.docker.outputs.image-latest-tag }}
+    inputs:
+      runner:
+        description: Runner label
+        required: false
+        type: string
+        default: ubuntu-latest
+      registry:
+        description: Container registry host
+        required: false
+        type: string
+        default: docker.io
+      image-name:
+        description: Optional image name override
+        required: false
+        type: string
+        default: ""
+      dockerfile:
+        description: Dockerfile path
+        required: false
+        type: string
+        default: Dockerfile
+      context:
+        description: Docker build context
+        required: false
+        type: string
+        default: .
+      version:
+        description: Optional explicit image version
+        required: false
+        type: string
+        default: ""
+      push-latest:
+        description: Also push latest tag
+        required: false
+        type: boolean
+        default: true
+      docker-username:
+        description: Optional docker registry username override
+        required: false
+        type: string
+        default: ""
+      docker-password:
+        description: Optional docker registry password override
+        required: false
+        type: string
+        default: ""
+    secrets:
+      docker-password:
+        required: false
+      docker-username:
+        required: false
+
+jobs:
+  docker:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      image: ${{ steps.docker.outputs.image }}
+      version: ${{ steps.docker.outputs.version }}
+      image-version-tag: ${{ steps.docker.outputs.image-version-tag }}
+      image-latest-tag: ${{ steps.docker.outputs.image-latest-tag }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RESOLVED_DOCKER_USERNAME: ${{ inputs.docker-username != '' && inputs.docker-username || secrets.docker-username != '' && secrets.docker-username || vars.DOCKER_USERNAME }}
+      RESOLVED_DOCKER_PASSWORD: ${{ inputs.docker-password != '' && inputs.docker-password || secrets.docker-password != '' && secrets.docker-password || secrets.DOCKERHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate docker credentials
+        if: ${{ env.RESOLVED_DOCKER_PASSWORD == '' }}
+        shell: bash
+        run: |
+          echo "Missing Docker password/token. Provide inputs.docker-password or secrets.docker-password or secrets.DOCKERHUB_TOKEN." >&2
+          exit 1
+
+      - name: Build and push docker image
+        id: docker
+        uses: ./actions/docker-upload
+        env:
+          DOCKER_USERNAME: ${{ env.RESOLVED_DOCKER_USERNAME }}
+        with:
+          registry: ${{ inputs.registry }}
+          image-name: ${{ inputs.image-name }}
+          dockerfile: ${{ inputs.dockerfile }}
+          context: ${{ inputs.context }}
+          version: ${{ inputs.version }}
+          push-latest: ${{ inputs.push-latest && 'true' || 'false' }}
+          username: ${{ env.RESOLVED_DOCKER_USERNAME }}
+          password: ${{ env.RESOLVED_DOCKER_PASSWORD }}
