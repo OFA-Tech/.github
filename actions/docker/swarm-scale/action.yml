@@ -1,0 +1,38 @@
+name: Docker Swarm Scale
+description: Scale a Docker Swarm service to a desired replica count.
+inputs:
+  service-name:
+    description: Swarm service name
+    required: true
+  replicas:
+    description: Desired replicas count
+    required: true
+outputs:
+  service-name:
+    description: Scaled service name
+    value: ${{ steps.scale.outputs.service-name }}
+  replicas:
+    description: Desired replicas value applied
+    value: ${{ steps.scale.outputs.replicas }}
+runs:
+  using: composite
+  steps:
+    - name: Scale swarm service
+      id: scale
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
+          echo "Docker Swarm is not active on this runner." >&2
+          exit 1
+        fi
+
+        docker service scale "${{ inputs.service-name }}=${{ inputs.replicas }}"
+
+        {
+          echo "service-name=${{ inputs.service-name }}"
+          echo "replicas=${{ inputs.replicas }}"
+        } >> "$GITHUB_OUTPUT"

@@ -9,7 +9,7 @@ inputs:
     required: false
     default: ""
   distribution:
-    description: Optional Java distribution override
+    description: Optional Distribution override
     required: false
     default: ""
   build-command:
@@ -28,7 +28,7 @@ outputs:
     description: Resolved runtime version
     value: ${{ steps.resolve.outputs.version }}
   distribution:
-    description: Resolved Java distribution
+    description: Resolved distribution
     value: ${{ steps.resolve.outputs.distribution }}
   build-command:
     description: Resolved build command
@@ -44,9 +44,10 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../scripts/common/action-common.sh"
 
         language_raw="${{ inputs.language }}"
-        language="$(echo "$language_raw" | tr '[:upper:]' '[:lower:]')"
+        language="$(common_to_lower "$language_raw")"
 
         input_version="${{ inputs.version }}"
         input_distribution="${{ inputs.distribution }}"
@@ -107,10 +108,8 @@ runs:
         resolved_build="${input_build:-$default_build}"
         resolved_test="${input_test:-$default_test}"
 
-        {
-          echo "language=$language"
-          echo "version=$resolved_version"
-          echo "distribution=$resolved_distribution"
-          echo "build-command=$resolved_build"
-          echo "test-command=$resolved_test"
-        } >> "$GITHUB_OUTPUT"
+        common_write_output "language" "$language"
+        common_write_output "version" "$resolved_version"
+        common_write_output "distribution" "$resolved_distribution"
+        common_write_output "build-command" "$resolved_build"
+        common_write_output "test-command" "$resolved_test"

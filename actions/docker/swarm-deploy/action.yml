@@ -1,0 +1,188 @@
+name: Docker Swarm Deploy
+description: Create or update a Docker Swarm service from an image.
+inputs:
+  service-name:
+    description: Swarm service name
+    required: true
+  image:
+    description: Image reference for the service
+    required: true
+  replicas:
+    description: Optional replicas count
+    required: false
+    default: ""
+  with-registry-auth:
+    description: Forward registry credentials to swarm nodes
+    required: false
+    default: "true"
+  detach:
+    description: Do not block waiting for operation completion
+    required: false
+    default: "true"
+  publish-ports:
+    description: Newline-separated published ports (published=80,target=8080)
+    required: false
+    default: ""
+  mounts:
+    description: Newline-separated mounts accepted by --mount
+    required: false
+    default: ""
+  env:
+    description: Newline-separated environment values (KEY=VALUE)
+    required: false
+    default: ""
+  constraints:
+    description: Newline-separated placement constraints
+    required: false
+    default: ""
+  networks:
+    description: Newline-separated network names
+    required: false
+    default: ""
+  extra-options:
+    description: Raw options appended to create/update command
+    required: false
+    default: ""
+outputs:
+  service-name:
+    description: Target service name
+    value: ${{ steps.deploy.outputs.service-name }}
+  operation:
+    description: create when service was created, update when service existed
+    value: ${{ steps.deploy.outputs.operation }}
+runs:
+  using: composite
+  steps:
+    - name: Deploy or update swarm service
+      id: deploy
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
+          echo "Docker Swarm is not active on this runner." >&2
+          exit 1
+        fi
+
+        with_auth=false
+        if docker_is_true "${{ inputs.with-registry-auth }}"; then
+          with_auth=true
+        fi
+
+        detach_flag="true"
+        if docker_is_true "${{ inputs.detach }}"; then
+          detach_flag="true"
+        else
+          detach_flag="false"
+        fi
+
+        if docker service inspect "${{ inputs.service-name }}" >/dev/null 2>&1; then
+          cmd=(docker service update --image "${{ inputs.image }}" --detach "$detach_flag")
+          if [ "$with_auth" = true ]; then
+            cmd+=(--with-registry-auth)
+          fi
+
+          if [ -n "${{ inputs.replicas }}" ]; then
+            cmd+=(--replicas "${{ inputs.replicas }}")
+          fi
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--publish-add "$line")
+            fi
+          done <<< "${{ inputs.publish-ports }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--mount-add "$line")
+            fi
+          done <<< "${{ inputs.mounts }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--env-add "$line")
+            fi
+          done <<< "${{ inputs.env }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--constraint-add "$line")
+            fi
+          done <<< "${{ inputs.constraints }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--network-add "$line")
+            fi
+          done <<< "${{ inputs.networks }}"
+
+          cmd+=("${{ inputs.service-name }}")
+
+          if [ -n "${{ inputs.extra-options }}" ]; then
+            cmd_string=""
+            printf -v cmd_string '%q ' "${cmd[@]}"
+            eval "$cmd_string ${{ inputs.extra-options }}"
+          else
+            "${cmd[@]}"
+          fi
+
+          operation="update"
+        else
+          cmd=(docker service create --name "${{ inputs.service-name }}" --detach "$detach_flag")
+          if [ "$with_auth" = true ]; then
+            cmd+=(--with-registry-auth)
+          fi
+
+          if [ -n "${{ inputs.replicas }}" ]; then
+            cmd+=(--replicas "${{ inputs.replicas }}")
+          fi
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--publish "$line")
+            fi
+          done <<< "${{ inputs.publish-ports }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--mount "$line")
+            fi
+          done <<< "${{ inputs.mounts }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--env "$line")
+            fi
+          done <<< "${{ inputs.env }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--constraint "$line")
+            fi
+          done <<< "${{ inputs.constraints }}"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              cmd+=(--network "$line")
+            fi
+          done <<< "${{ inputs.networks }}"
+
+          cmd+=("${{ inputs.image }}")
+
+          if [ -n "${{ inputs.extra-options }}" ]; then
+            cmd_string=""
+            printf -v cmd_string '%q ' "${cmd[@]}"
+            eval "$cmd_string ${{ inputs.extra-options }}"
+          else
+            "${cmd[@]}"
+          fi
+
+          operation="create"
+        fi
+
+        {
+          echo "service-name=${{ inputs.service-name }}"
+          echo "operation=$operation"
+        } >> "$GITHUB_OUTPUT"

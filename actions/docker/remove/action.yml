@@ -1,0 +1,88 @@
+name: Docker Remove
+description: Remove Docker containers and images safely.
+inputs:
+  container:
+    description: Optional container id or name to remove
+    required: false
+    default: ""
+  image:
+    description: Optional image reference to remove
+    required: false
+    default: ""
+  force:
+    description: Force container/image removal when possible
+    required: false
+    default: "true"
+  remove-volumes:
+    description: Remove anonymous volumes with container
+    required: false
+    default: "false"
+  stop-first:
+    description: Stop container before remove
+    required: false
+    default: "true"
+  prune-dangling:
+    description: Prune dangling images after requested removals
+    required: false
+    default: "false"
+outputs:
+  removed-container:
+    description: true when a container was removed
+    value: ${{ steps.remove.outputs.removed-container }}
+  removed-image:
+    description: true when an image was removed
+    value: ${{ steps.remove.outputs.removed-image }}
+runs:
+  using: composite
+  steps:
+    - name: Remove docker resources
+      id: remove
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        removed_container="false"
+        removed_image="false"
+
+        if [ -n "${{ inputs.container }}" ]; then
+          if docker ps -a --format '{{.Names}}' | grep -Fxq "${{ inputs.container }}" || docker ps -a --format '{{.ID}}' | grep -Fxq "${{ inputs.container }}"; then
+            if docker_is_true "${{ inputs.stop-first }}"; then
+              docker stop "${{ inputs.container }}" >/dev/null 2>&1 || true
+            fi
+
+            rm_args=(docker rm)
+            if docker_is_true "${{ inputs.force }}"; then
+              rm_args+=(-f)
+            fi
+            if docker_is_true "${{ inputs.remove-volumes }}"; then
+              rm_args+=(-v)
+            fi
+
+            rm_args+=("${{ inputs.container }}")
+            "${rm_args[@]}"
+            removed_container="true"
+          fi
+        fi
+
+        if [ -n "${{ inputs.image }}" ]; then
+          if docker image inspect "${{ inputs.image }}" >/dev/null 2>&1; then
+            rmi_args=(docker rmi)
+            if docker_is_true "${{ inputs.force }}"; then
+              rmi_args+=(-f)
+            fi
+            rmi_args+=("${{ inputs.image }}")
+            "${rmi_args[@]}"
+            removed_image="true"
+          fi
+        fi
+
+        if docker_is_true "${{ inputs.prune-dangling }}"; then
+          docker image prune -f
+        fi
+
+        {
+          echo "removed-container=$removed_container"
+          echo "removed-image=$removed_image"
+        } >> "$GITHUB_OUTPUT"

@@ -1,0 +1,38 @@
+name: Docker Metadata
+description: Resolve Docker image name and tags from repository context.
+inputs:
+  registry:
+    description: Docker registry host (for example ghcr.io, docker.io)
+    required: false
+    default: ghcr.io
+  image-name:
+    description: Optional full image name override
+    required: false
+    default: ""
+  version:
+    description: Optional explicit image version tag override
+    required: false
+    default: ""
+outputs:
+  image:
+    description: Resolved image repository name
+    value: ${{ steps.meta.outputs.image }}
+  version:
+    description: Resolved version tag
+    value: ${{ steps.meta.outputs.version }}
+  image-version-tag:
+    description: Fully-qualified image:version tag
+    value: ${{ steps.meta.outputs.image-version-tag }}
+  image-latest-tag:
+    description: Fully-qualified image:latest tag
+    value: ${{ steps.meta.outputs.image-latest-tag }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve image metadata
+      id: meta
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_resolve_metadata "${{ inputs.registry }}" "${{ inputs.image-name }}" "${{ inputs.version }}"

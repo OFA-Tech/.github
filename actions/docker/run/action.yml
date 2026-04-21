@@ -1,0 +1,132 @@
+name: Docker Run
+description: Pull and run a container with configurable runtime options.
+inputs:
+  image:
+    description: Image reference to run
+    required: true
+  container-name:
+    description: Optional container name
+    required: false
+    default: ""
+  command:
+    description: Optional raw command appended after image
+    required: false
+    default: ""
+  detach:
+    description: Run container in detached mode
+    required: false
+    default: "true"
+  remove-on-exit:
+    description: Automatically remove container on exit
+    required: false
+    default: "false"
+  pull:
+    description: Pull image before running container
+    required: false
+    default: "true"
+  ports:
+    description: Newline-separated port mappings (host:container)
+    required: false
+    default: ""
+  env:
+    description: Newline-separated environment values (KEY=VALUE)
+    required: false
+    default: ""
+  volumes:
+    description: Newline-separated volume mappings (source:target)
+    required: false
+    default: ""
+  network:
+    description: Optional network name
+    required: false
+    default: ""
+  restart:
+    description: Optional restart policy (no, always, on-failure, unless-stopped)
+    required: false
+    default: ""
+  workdir:
+    description: Optional working directory inside container
+    required: false
+    default: ""
+  entrypoint:
+    description: Optional entrypoint override
+    required: false
+    default: ""
+outputs:
+  container-id:
+    description: Container id returned by docker run
+    value: ${{ steps.run.outputs.container-id }}
+runs:
+  using: composite
+  steps:
+    - name: Run container
+      id: run
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        if docker_is_true "${{ inputs.pull }}"; then
+          docker pull "${{ inputs.image }}"
+        fi
+
+        cmd=(docker run)
+
+        if docker_is_true "${{ inputs.detach }}"; then
+          cmd+=(--detach)
+        fi
+
+        if docker_is_true "${{ inputs.remove-on-exit }}"; then
+          cmd+=(--rm)
+        fi
+
+        if [ -n "${{ inputs.container-name }}" ]; then
+          cmd+=(--name "${{ inputs.container-name }}")
+        fi
+
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            cmd+=(--publish "$line")
+          fi
+        done <<< "${{ inputs.ports }}"
+
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            cmd+=(--env "$line")
+          fi
+        done <<< "${{ inputs.env }}"
+
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            cmd+=(--volume "$line")
+          fi
+        done <<< "${{ inputs.volumes }}"
+
+        if [ -n "${{ inputs.network }}" ]; then
+          cmd+=(--network "${{ inputs.network }}")
+        fi
+
+        if [ -n "${{ inputs.restart }}" ]; then
+          cmd+=(--restart "${{ inputs.restart }}")
+        fi
+
+        if [ -n "${{ inputs.workdir }}" ]; then
+          cmd+=(--workdir "${{ inputs.workdir }}")
+        fi
+
+        if [ -n "${{ inputs.entrypoint }}" ]; then
+          cmd+=(--entrypoint "${{ inputs.entrypoint }}")
+        fi
+
+        cmd+=("${{ inputs.image }}")
+
+        if [ -n "${{ inputs.command }}" ]; then
+          cmd_string=""
+          printf -v cmd_string '%q ' "${cmd[@]}"
+          container_id="$(eval "$cmd_string ${{ inputs.command }}")"
+        else
+          container_id="$("${cmd[@]}")"
+        fi
+
+        echo "container-id=$container_id" >> "$GITHUB_OUTPUT"

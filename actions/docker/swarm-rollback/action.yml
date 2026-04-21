@@ -1,0 +1,39 @@
+name: Docker Swarm Rollback
+description: Roll back a Docker Swarm service to the previous version.
+inputs:
+  service-name:
+    description: Swarm service name
+    required: true
+  detach:
+    description: Do not block waiting for rollback completion
+    required: false
+    default: "true"
+outputs:
+  service-name:
+    description: Rolled back service name
+    value: ${{ steps.rollback.outputs.service-name }}
+runs:
+  using: composite
+  steps:
+    - name: Roll back swarm service
+      id: rollback
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
+          echo "Docker Swarm is not active on this runner." >&2
+          exit 1
+        fi
+
+        detach_flag="true"
+        if docker_is_true "${{ inputs.detach }}"; then
+          detach_flag="true"
+        else
+          detach_flag="false"
+        fi
+
+        docker service rollback --detach "$detach_flag" "${{ inputs.service-name }}"
+        echo "service-name=${{ inputs.service-name }}" >> "$GITHUB_OUTPUT"

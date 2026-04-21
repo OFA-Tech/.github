@@ -1,0 +1,37 @@
+name: Docker Login
+description: Authenticate against a Docker-compatible registry.
+inputs:
+  registry:
+    description: Docker registry host (for example ghcr.io, docker.io)
+    required: false
+    default: docker.io
+  username:
+    description: Registry username override
+    required: false
+    default: ""
+  password:
+    description: Registry password or token
+    required: true
+outputs:
+  username:
+    description: Resolved username used during login
+    value: ${{ steps.login.outputs.username }}
+runs:
+  using: composite
+  steps:
+    - name: Login to registry
+      id: login
+      shell: bash
+      env:
+        ORG_DOCKER_USERNAME_SECRET: ${{ env.DOCKER_USERNAME_SECRET }}
+        ORG_DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
+        FALLBACK_GITHUB_ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        resolved_username="$(docker_resolve_username "${{ inputs.username }}" "$ORG_DOCKER_USERNAME_SECRET" "$ORG_DOCKER_USERNAME" "$FALLBACK_GITHUB_ACTOR")"
+        docker_login "${{ inputs.registry }}" "$resolved_username" "${{ inputs.password }}"
+
+        echo "username=$resolved_username" >> "$GITHUB_OUTPUT"

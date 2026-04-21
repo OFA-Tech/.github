@@ -1,0 +1,147 @@
+name: Docker Image Upload
+description: Resolve metadata, build Docker image and push version/latest tags.
+inputs:
+  registry:
+    description: Docker registry host (for example ghcr.io, docker.io)
+    required: false
+    default: ghcr.io
+  image-name:
+    description: Optional image name override; defaults to owner/repo name
+    required: false
+    default: ""
+  dockerfile:
+    description: Path to Dockerfile
+    required: false
+    default: Dockerfile
+  context:
+    description: Docker build context path
+    required: false
+    default: .
+  username:
+    description: Registry username override
+    required: false
+    default: ""
+  password:
+    description: Registry password or token
+    required: true
+  version:
+    description: Optional explicit version tag override
+    required: false
+    default: ""
+  push-latest:
+    description: Also push latest tag
+    required: false
+    default: "true"
+  build-args:
+    description: Newline-separated build args (KEY=VALUE)
+    required: false
+    default: ""
+  labels:
+    description: Newline-separated image labels (KEY=VALUE)
+    required: false
+    default: ""
+  target:
+    description: Optional target stage name
+    required: false
+    default: ""
+  pull:
+    description: Always attempt to pull newer base images
+    required: false
+    default: "true"
+  no-cache:
+    description: Do not use cache when building image
+    required: false
+    default: "false"
+outputs:
+  image:
+    description: Resolved image repository name
+    value: ${{ steps.meta.outputs.image }}
+  version:
+    description: Resolved version tag
+    value: ${{ steps.meta.outputs.version }}
+  image-version-tag:
+    description: Fully-qualified image:version tag
+    value: ${{ steps.meta.outputs.image-version-tag }}
+  image-latest-tag:
+    description: Fully-qualified image:latest tag
+    value: ${{ steps.meta.outputs.image-latest-tag }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve metadata
+      id: meta
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_resolve_metadata "${{ inputs.registry }}" "${{ inputs.image-name }}" "${{ inputs.version }}"
+
+    - name: Login to registry
+      shell: bash
+      env:
+        ORG_DOCKER_USERNAME_SECRET: ${{ env.DOCKER_USERNAME_SECRET }}
+        ORG_DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
+        FALLBACK_GITHUB_ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        resolved_username="$(docker_resolve_username "${{ inputs.username }}" "$ORG_DOCKER_USERNAME_SECRET" "$ORG_DOCKER_USERNAME" "$FALLBACK_GITHUB_ACTOR")"
+        docker_login "${{ inputs.registry }}" "$resolved_username" "${{ inputs.password }}"
+
+    - name: Build docker image
+      shell: bash
+      run: |
+        set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+        docker_require_cmd docker
+
+        cmd=(docker build -f "${{ inputs.dockerfile }}" -t "${{ steps.meta.outputs.image-version-tag }}")
+
+        if docker_is_true "${{ inputs.pull }}"; then
+          cmd+=(--pull)
+        fi
+
+        if docker_is_true "${{ inputs.no-cache }}"; then
+          cmd+=(--no-cache)
+        fi
+
+        if [ -n "${{ inputs.target }}" ]; then
+          cmd+=(--target "${{ inputs.target }}")
+        fi
+
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            cmd+=(--build-arg "$line")
+          fi
+        done <<< "${{ inputs.build-args }}"
+
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            cmd+=(--label "$line")
+          fi
+        done <<< "${{ inputs.labels }}"
+
+        cmd+=("${{ inputs.context }}")
+        "${cmd[@]}"
+
+    - name: Tag latest
+      if: ${{ inputs.push-latest == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker tag "${{ steps.meta.outputs.image-version-tag }}" "${{ steps.meta.outputs.image-latest-tag }}"
+
+    - name: Push version
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker push "${{ steps.meta.outputs.image-version-tag }}"
+
+    - name: Push latest
+      if: ${{ inputs.push-latest == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker push "${{ steps.meta.outputs.image-latest-tag }}"
