@@ -1,47 +1,69 @@
-name: Build
+name: Sonar Template
 
 on:
-  push:
-    branches:
-      - main
-
+  workflow_call:
+    inputs:
+      language:
+        required: true
+        type: string
+      language-version:
+        required: false
+        type: string
+        default: ""
+      distribution:
+        required: false
+        type: string
+        default: ""
+      runner:
+        required: false
+        type: string
+        default: ubuntu-latest
+      working-directory:
+        required: false
+        type: string
+        default: .
+      sonar-project-key:
+        required: false
+        type: string
+        default: ""
+      sonar-project-name:
+        required: false
+        type: string
+        default: ""
+      sonar-sources:
+        required: false
+        type: string
+        default: .
+      sonar-command:
+        required: false
+        type: string
+        default: ""
+      enforce-quality-gate:
+        required: false
+        type: boolean
+        default: false
+      sonar-token:
+        required: false
+        type: string
+        default: ""
+      sonar-host-url:
+        required: false
+        type: string
+        default: ""
 
 jobs:
-  build:
-    name: Build and analyze
-    runs-on: windows-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: 'zulu' # Alternative distribution options are available.
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache SonarQube scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
-      - name: Install SonarQube scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
-      - name: Build and analyze
-        shell: powershell
-        run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"OFA-Tech_HuskyHub_e856fc25-36e2-40ee-9e9b-9af8b043b474" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
-          dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+  sonar:
+    uses: ./.github/workflows/stage-sonar.yml
+    with:
+      language: ${{ inputs.language }}
+      language-version: ${{ inputs.language-version }}
+      distribution: ${{ inputs.distribution }}
+      runner: ${{ inputs.runner }}
+      working-directory: ${{ inputs.working-directory }}
+      sonar-project-key: ${{ inputs.sonar-project-key }}
+      sonar-project-name: ${{ inputs.sonar-project-name }}
+      sonar-sources: ${{ inputs.sonar-sources }}
+      sonar-command: ${{ inputs.sonar-command }}
+      enforce-quality-gate: ${{ inputs.enforce-quality-gate }}
+      sonar-token: ${{ inputs.sonar-token }}
+      sonar-host-url: ${{ inputs.sonar-host-url }}

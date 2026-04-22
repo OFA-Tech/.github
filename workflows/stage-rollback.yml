@@ -4,121 +4,94 @@ on:
   workflow_call:
     inputs:
       strategy:
-        description: Rollback strategy (portainer, docker, ssh-artifact)
         required: true
         type: string
       runner:
-        description: Runner label
         required: false
         type: string
         default: self-hosted
-
       host:
-        description: Remote host for docker/ssh rollback
         required: false
         type: string
         default: ""
       port:
-        description: SSH port
         required: false
         type: string
         default: "22"
       username:
-        description: SSH username
         required: false
         type: string
         default: ""
-
+      ssh-private-key:
+        required: false
+        type: string
+        default: ""
       ssh-rollback-command:
-        description: Command to execute for ssh-artifact rollback
         required: false
         type: string
         default: ""
-
       docker-mode:
-        description: Docker rollback mode (swarm or standalone)
         required: false
         type: string
         default: swarm
       docker-swarm-service-name:
-        description: Swarm service to rollback
         required: false
         type: string
         default: ""
       docker-rollback-command:
-        description: Custom command for standalone docker rollback
         required: false
         type: string
         default: ""
-
       portainer-url:
-        description: Portainer URL override
         required: false
         type: string
         default: ""
       endpoint-id:
-        description: Portainer endpoint ID override
+        required: false
+        type: string
+        default: ""
+      portainer-api-key:
         required: false
         type: string
         default: ""
       portainer-stack-id:
-        description: Portainer stack ID for rollback
         required: false
         type: string
         default: ""
       portainer-rollback-to:
-        description: Optional Portainer rollback target version
         required: false
         type: string
         default: ""
       portainer-prune:
-        description: Prune during Portainer rollback
         required: false
         type: boolean
         default: false
       portainer-repull-image-and-redeploy:
-        description: Repull image during Portainer rollback
         required: false
         type: boolean
         default: true
-
-    secrets:
-      ssh-private-key:
-        required: false
-      portainer-api-key:
-        required: false
 
 jobs:
   rollback:
     runs-on: ${{ inputs.runner }}
     permissions:
       contents: read
-    env:
-      RESOLVED_HOST: ${{ inputs.host != '' && inputs.host || vars.DEPLOY_HOST }}
-      RESOLVED_PORT: ${{ inputs.port != '' && inputs.port || vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
-      RESOLVED_USERNAME: ${{ inputs.username != '' && inputs.username || vars.DEPLOY_USERNAME }}
-      RESOLVED_SSH_PRIVATE_KEY: ${{ secrets.ssh-private-key != '' && secrets.ssh-private-key || secrets.DEPLOY_SSH_PRIVATE_KEY }}
-      RESOLVED_PORTAINER_URL: ${{ inputs.portainer-url != '' && inputs.portainer-url || vars.PORTAINER_URL }}
-      RESOLVED_PORTAINER_ENDPOINT_ID: ${{ inputs.endpoint-id != '' && inputs.endpoint-id || vars.PORTAINER_ENDPOINT_ID }}
-      RESOLVED_PORTAINER_API_KEY: ${{ secrets.portainer-api-key != '' && secrets.portainer-api-key || secrets.PORTAINER_API_KEY }}
-
     steps:
       - name: Validate rollback configuration
         shell: bash
         run: |
           set -euo pipefail
-
           case "${{ inputs.strategy }}" in
             portainer)
-              [[ -n "${RESOLVED_PORTAINER_URL}" ]] || { echo "Missing Portainer URL"; exit 1; }
-              [[ -n "${RESOLVED_PORTAINER_ENDPOINT_ID}" ]] || { echo "Missing Portainer endpoint ID"; exit 1; }
-              [[ -n "${RESOLVED_PORTAINER_API_KEY}" ]] || { echo "Missing Portainer API key"; exit 1; }
+              [[ -n "${{ inputs.portainer-url }}" ]] || { echo "Missing portainer-url"; exit 1; }
+              [[ -n "${{ inputs.endpoint-id }}" ]] || { echo "Missing endpoint-id"; exit 1; }
+              [[ -n "${{ inputs.portainer-api-key }}" ]] || { echo "Missing portainer-api-key"; exit 1; }
               [[ -n "${{ inputs.portainer-stack-id }}" ]] || { echo "Missing portainer-stack-id"; exit 1; }
               ;;
             docker)
-              [[ -n "${RESOLVED_HOST}" ]] || { echo "Missing deploy host"; exit 1; }
-              [[ -n "${RESOLVED_USERNAME}" ]] || { echo "Missing deploy username"; exit 1; }
-              [[ -n "${RESOLVED_SSH_PRIVATE_KEY}" ]] || { echo "Missing ssh private key"; exit 1; }
+              [[ -n "${{ inputs.host }}" ]] || { echo "Missing host"; exit 1; }
+              [[ -n "${{ inputs.username }}" ]] || { echo "Missing username"; exit 1; }
+              [[ -n "${{ inputs.ssh-private-key }}" ]] || { echo "Missing ssh-private-key"; exit 1; }
               if [[ "${{ inputs.docker-mode }}" = "swarm" ]]; then
                 [[ -n "${{ inputs.docker-swarm-service-name }}" ]] || { echo "Missing docker-swarm-service-name"; exit 1; }
               else
@@ -126,9 +99,9 @@ jobs:
               fi
               ;;
             ssh-artifact)
-              [[ -n "${RESOLVED_HOST}" ]] || { echo "Missing deploy host"; exit 1; }
-              [[ -n "${RESOLVED_USERNAME}" ]] || { echo "Missing deploy username"; exit 1; }
-              [[ -n "${RESOLVED_SSH_PRIVATE_KEY}" ]] || { echo "Missing ssh private key"; exit 1; }
+              [[ -n "${{ inputs.host }}" ]] || { echo "Missing host"; exit 1; }
+              [[ -n "${{ inputs.username }}" ]] || { echo "Missing username"; exit 1; }
+              [[ -n "${{ inputs.ssh-private-key }}" ]] || { echo "Missing ssh-private-key"; exit 1; }
               [[ -n "${{ inputs.ssh-rollback-command }}" ]] || { echo "Missing ssh-rollback-command"; exit 1; }
               ;;
             *)
@@ -141,9 +114,9 @@ jobs:
         if: ${{ inputs.strategy == 'portainer' }}
         uses: ./actions/portainer/rollback
         with:
-          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
-          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
-          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          portainer-url: ${{ inputs.portainer-url }}
+          api-key: ${{ inputs.portainer-api-key }}
+          endpoint-id: ${{ inputs.endpoint-id }}
           stack-id: ${{ inputs.portainer-stack-id }}
           rollback-to: ${{ inputs.portainer-rollback-to }}
           prune: ${{ inputs.portainer-prune && 'true' || 'false' }}
@@ -153,10 +126,10 @@ jobs:
         if: ${{ inputs.strategy == 'docker' && inputs.docker-mode == 'swarm' }}
         uses: ./actions/ssh/command
         with:
-          host: ${{ env.RESOLVED_HOST }}
-          port: ${{ env.RESOLVED_PORT }}
-          username: ${{ env.RESOLVED_USERNAME }}
-          ssh-private-key: ${{ env.RESOLVED_SSH_PRIVATE_KEY }}
+          host: ${{ inputs.host }}
+          port: ${{ inputs.port }}
+          username: ${{ inputs.username }}
+          ssh-private-key: ${{ inputs.ssh-private-key }}
           script: |
             set -euo pipefail
             docker service rollback "${{ inputs.docker-swarm-service-name }}"
@@ -165,10 +138,10 @@ jobs:
         if: ${{ inputs.strategy == 'docker' && inputs.docker-mode == 'standalone' }}
         uses: ./actions/ssh/command
         with:
-          host: ${{ env.RESOLVED_HOST }}
-          port: ${{ env.RESOLVED_PORT }}
-          username: ${{ env.RESOLVED_USERNAME }}
-          ssh-private-key: ${{ env.RESOLVED_SSH_PRIVATE_KEY }}
+          host: ${{ inputs.host }}
+          port: ${{ inputs.port }}
+          username: ${{ inputs.username }}
+          ssh-private-key: ${{ inputs.ssh-private-key }}
           script: |
             set -euo pipefail
             ${{ inputs.docker-rollback-command }}
@@ -177,10 +150,10 @@ jobs:
         if: ${{ inputs.strategy == 'ssh-artifact' }}
         uses: ./actions/ssh/command
         with:
-          host: ${{ env.RESOLVED_HOST }}
-          port: ${{ env.RESOLVED_PORT }}
-          username: ${{ env.RESOLVED_USERNAME }}
-          ssh-private-key: ${{ env.RESOLVED_SSH_PRIVATE_KEY }}
+          host: ${{ inputs.host }}
+          port: ${{ inputs.port }}
+          username: ${{ inputs.username }}
+          ssh-private-key: ${{ inputs.ssh-private-key }}
           script: |
             set -euo pipefail
             ${{ inputs.ssh-rollback-command }}

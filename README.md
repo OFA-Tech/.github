@@ -1,36 +1,56 @@
 # OFA-Tech Central CI/CD
 
-This repository is the organization-wide DevOps control center for reusable GitHub Actions pipelines.
+Reusable GitHub Actions workflows and composite actions for consistent CI/CD across repositories.
 
-## Objective
+## Canonical Contract
 
-Provide production-grade, reusable CI/CD building blocks that can be consumed by any repository in OFA-Tech with minimal configuration.
+Primary orchestration entrypoint: `workflow-templates/ci-cd.yml`.
 
-## Architecture
+Canonical input names are kebab-case and are used consistently across stage workflows:
 
-- Reusable workflows (`workflow_call`) orchestrate CI/CD stages.
-- Composite actions encapsulate reusable step logic.
-- Pipeline behavior is driven by inputs and secrets.
-- Language-specific behavior is dynamic and parameterized.
-- No repository-specific logic is hardcoded.
+- Runtime: `language`, `language-version`, `distribution`, `working-directory`, `runner`
+- Verify: `run-build`, `build-command`, `run-tests`, `run-unit-tests`, `unit-test-command`, `run-integration-tests`, `integration-test-command`, `run-mutation-tests`, `mutation-test-command`, `test-command`
+- Sonar: `run-sonar`, `sonar-project-key`, `sonar-project-name`, `sonar-sources`, `sonar-command`, `enforce-quality-gate`, `sonar-token`, `sonar-host-url`
+- Docker: `run-docker-image`, `docker-registry`, `docker-image-name`, `dockerfile`, `docker-context`, `docker-version`, `docker-push-latest`, `docker-username`, `docker-password`
+- Deploy: `run-deploy`, `deploy-strategy`, `deploy-mode`, `deploy-host`, `deploy-port`, `deploy-username`, `deploy-remote-path`, `deploy-source-glob`, `deploy-strip-components`, `deploy-overwrite`, `deploy-clean-remote`, `deploy-docker-image`, `deploy-docker-compose-file`, `deploy-docker-run-command`, `deploy-docker-swarm-service-name`, `deploy-docker-swarm-replicas`, `deploy-docker-registry`, `deploy-docker-username`, `deploy-docker-password`, `deploy-ssh-private-key`
+- Portainer: `portainer-operation`, `portainer-stack-type`, `portainer-stack-id`, `portainer-stack-name`, `portainer-stack-file-content`, `portainer-swarm-id`, `portainer-env-json`, `portainer-prune`, `portainer-repull-image-and-redeploy`, `portainer-prefer-git-redeploy`, `portainer-endpoint-id`, `portainer-url`, `portainer-rollback-to`
+- Post-deploy and rollback: `run-post-deploy-tests`, `run-health-check`, `health-check-url`, `health-check-command`, `health-check-expected-status`, `health-check-retries`, `health-check-interval-seconds`, `run-load-test`, `load-test-command`, `run-contract-test`, `contract-test-command`, `run-rollback`, `auto-rollback`, `manual-rollback`, `docker-rollback-command`, `ssh-rollback-command`
 
-## Reusable Workflows
+## Global Precedence Model
 
-- `.github/workflows/ci-build.yml`: Central orchestration workflow (build, test, sonar, deploy).
-- `.github/workflows/stage-build.yml`: Build stage.
-- `.github/workflows/stage-test.yml`: Test stage.
-- `.github/workflows/stage-sonar.yml`: SonarQube code quality stage.
-- `.github/workflows/stage-deploy-sftp.yml`: SFTP deployment stage.
+All resolution is centralized in `workflow-templates/ci-cd.yml` (`resolve-contract` job) with this order:
 
-## Composite Actions
+1. Explicit input (`inputs.*`)
+2. Passed workflow secret (`secrets.*`)
+3. Environment-level vars/secrets (when available in context)
+4. Repository/organization vars/secrets (`vars.*`, fallback `secrets.*`)
 
-- `actions/setup-runtime/action.yml`: Multi-language runtime setup (`dotnet`, `node`, `java`, `python`, `go`, `php`, `cpp`).
-- `actions/run-command/action.yml`: Shared command runner with working directory support.
-- `actions/sftp-upload/action.yml`: Shared SFTP upload step logic.
+Stage workflows consume resolved values and do not re-resolve fallbacks.
 
-## How Consumer Repositories Use It
+## Defaults Matrix (selected)
 
-Create a workflow in the target repository and call the central workflow:
+| Canonical key | Resolution chain |
+|---|---|
+| `sonar-token` | `inputs.sonar-token` → `secrets.sonar-token` |
+| `sonar-host-url` | `inputs.sonar-host-url` → `secrets.sonar-host-url` → `vars.SONAR_HOST_URL` |
+| `sonar-project-key` | `inputs.sonar-project-key` → `vars.SONAR_PROJECT_KEY` |
+| `docker-password` | `inputs.docker-password` → `secrets.docker-password` |
+| `deploy-host` | `inputs.deploy-host` → `vars.DEPLOY_HOST` |
+| `deploy-ssh-private-key` | `inputs.deploy-ssh-private-key` → `secrets.deploy-ssh-private-key` |
+| `portainer-api-key` | `secrets.portainer-api-key` |
+
+## Sonar Templates
+
+All Sonar templates in `workflow-templates/sonar-*.yml` now use one identical contract and delegate execution to `workflows/stage-sonar.yml`. No template contains hardcoded project keys or secrets.
+
+## Guardrails
+
+`workflows/ci-guardrails.yml` enforces:
+
+- `actionlint` on `workflow-templates/*.yml` and `workflows/*.yml`
+- `shellcheck` on `scripts/**/*.sh`
+
+## Usage Example
 
 ```yaml
 name: CI/CD
@@ -42,86 +62,18 @@ on:
 
 jobs:
   pipeline:
-    uses: OFA-Tech/.github/.github/workflows/ci-build.yml@v1
+    uses: OFA-Tech/.github/workflow-templates/ci-cd.yml@v1
     with:
       language: dotnet
-      language-version: '8.0'
-      working-directory: .
+      language-version: "8.0"
       run-build: true
-      build-command: dotnet restore && dotnet build --configuration Release --no-restore
-      upload-artifact: true
-      artifact-name: app
-      artifact-path: ./src/MyApp/bin/Release/**
       run-tests: true
-      test-command: dotnet test --configuration Release --no-build --verbosity normal
       run-sonar: true
       sonar-project-key: ofa_myapp
       sonar-project-name: MyApp
-      sonar-sources: src
-      enforce-quality-gate: true
+      deploy-strategy: docker
       run-deploy: false
     secrets:
       sonar-token: ${{ secrets.SONAR_TOKEN }}
       sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-      deploy-ssh-private-key: ${{ secrets.SFTP_PRIVATE_KEY }}
 ```
-
-## Common Language Examples
-
-Node.js:
-
-```yaml
-with:
-  language: node
-  language-version: '20'
-  build-command: npm ci && npm run build
-  test-command: npm test -- --ci
-```
-
-Python:
-
-```yaml
-with:
-  language: python
-  language-version: '3.12'
-  build-command: python -m pip install -r requirements.txt
-  test-command: pytest -q
-```
-
-Java (Maven):
-
-```yaml
-with:
-  language: java
-  language-version: '21'
-  java-distribution: temurin
-  build-command: mvn -B -DskipTests package
-  test-command: mvn -B test
-```
-
-## Input Strategy
-
-- Use `run-build`, `run-tests`, `run-sonar`, and `run-deploy` to enable or disable stages.
-- Pass language/runtime through `language` and `language-version`.
-- Keep commands repository-specific through `build-command`, `test-command`, and optional `sonar-command`.
-- Use artifact parameters for cross-stage deployment (`artifact-name`, `artifact-path`).
-
-## Secrets Strategy
-
-- Sonar: `sonar-token`, `sonar-host-url`
-- Deploy: `deploy-ssh-private-key`
-
-Only provide secrets required by enabled stages.
-
-## Versioning and Governance
-
-- Use version tags when consuming workflows (`@v1`, `@v1.1.0`).
-- Avoid `@main` in production repositories.
-- Keep this repository backward-compatible for versioned workflow contracts.
-
-## Design Principles
-
-- Small workflows, shared components.
-- Input-driven pipelines.
-- Separation of concerns by stage.
-- Maximum reuse across organization repositories.

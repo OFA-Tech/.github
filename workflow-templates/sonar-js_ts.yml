@@ -1,27 +1,69 @@
-name: Build
+name: Sonar Template
 
 on:
-  push:
-    branches:
-      - main
-
+  workflow_call:
+    inputs:
+      language:
+        required: true
+        type: string
+      language-version:
+        required: false
+        type: string
+        default: ""
+      distribution:
+        required: false
+        type: string
+        default: ""
+      runner:
+        required: false
+        type: string
+        default: ubuntu-latest
+      working-directory:
+        required: false
+        type: string
+        default: .
+      sonar-project-key:
+        required: false
+        type: string
+        default: ""
+      sonar-project-name:
+        required: false
+        type: string
+        default: ""
+      sonar-sources:
+        required: false
+        type: string
+        default: .
+      sonar-command:
+        required: false
+        type: string
+        default: ""
+      enforce-quality-gate:
+        required: false
+        type: boolean
+        default: false
+      sonar-token:
+        required: false
+        type: string
+        default: ""
+      sonar-host-url:
+        required: false
+        type: string
+        default: ""
 
 jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@v1
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  sonar:
+    uses: ./.github/workflows/stage-sonar.yml
+    with:
+      language: ${{ inputs.language }}
+      language-version: ${{ inputs.language-version }}
+      distribution: ${{ inputs.distribution }}
+      runner: ${{ inputs.runner }}
+      working-directory: ${{ inputs.working-directory }}
+      sonar-project-key: ${{ inputs.sonar-project-key }}
+      sonar-project-name: ${{ inputs.sonar-project-name }}
+      sonar-sources: ${{ inputs.sonar-sources }}
+      sonar-command: ${{ inputs.sonar-command }}
+      enforce-quality-gate: ${{ inputs.enforce-quality-gate }}
+      sonar-token: ${{ inputs.sonar-token }}
+      sonar-host-url: ${{ inputs.sonar-host-url }}

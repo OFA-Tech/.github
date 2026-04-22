@@ -4,151 +4,114 @@ on:
   workflow_call:
     inputs:
       language:
-        description: Programming language (dotnet, node, java, python, go, php, cpp)
         required: true
         type: string
       language-version:
-        description: Runtime version
         required: false
         type: string
         default: ""
       distribution:
-        description: Optional Java distribution override
         required: false
         type: string
         default: ""
       working-directory:
-        description: Working directory for commands
         required: false
         type: string
         default: .
       runner:
-        description: Runner label
         required: false
         type: string
         default: ubuntu-latest
       run-build:
-        description: Enables build step
         required: false
         type: boolean
         default: true
       build-command:
-        description: Optional build command override
         required: false
         type: string
         default: ""
       run-tests:
-        description: Enables test step
         required: false
         type: boolean
         default: true
       run-unit-tests:
-        description: Enables unit test step
         required: false
         type: boolean
         default: true
       unit-test-command:
-        description: Optional unit test command override
         required: false
         type: string
         default: ""
       run-integration-tests:
-        description: Enables integration test step
         required: false
         type: boolean
         default: false
       integration-test-command:
-        description: Optional integration test command override
         required: false
         type: string
         default: ""
       run-mutation-tests:
-        description: Enables mutation test step
         required: false
         type: boolean
         default: false
       mutation-test-command:
-        description: Optional mutation test command override
         required: false
         type: string
         default: ""
       test-command:
-        description: Optional test command override
         required: false
         type: string
         default: ""
       run-sonar:
-        description: Enables SonarQube step
         required: false
         type: boolean
         default: false
       sonar-project-key:
-        description: Optional SonarQube project key override
         required: false
         type: string
         default: ""
       sonar-project-name:
-        description: Optional SonarQube project name override
         required: false
         type: string
         default: ""
       sonar-sources:
-        description: Sonar sources path
         required: false
         type: string
         default: .
       sonar-command:
-        description: Optional custom Sonar command
         required: false
         type: string
         default: ""
       enforce-quality-gate:
-        description: Fail stage if quality gate is red
         required: false
         type: boolean
         default: false
       sonar-token:
-        description: Optional Sonar token override
         required: false
         type: string
         default: ""
       sonar-host-url:
-        description: Optional Sonar host URL override
         required: false
         type: string
         default: ""
       upload-artifact:
-        description: Upload artifact after build verification
         required: false
         type: boolean
         default: false
       artifact-name:
-        description: Artifact name
         required: false
         type: string
         default: build-output
       artifact-path:
-        description: Artifact path or glob
         required: false
         type: string
         default: .
-    secrets:
-      sonar-token:
-        required: false
-      sonar-host-url:
-        required: false
 
 jobs:
   verify:
     runs-on: ${{ inputs.runner }}
     permissions:
       contents: read
-    env:
-      RESOLVED_SONAR_TOKEN: ${{ secrets.sonar-token != '' && secrets.sonar-token || inputs.sonar-token != '' && inputs.sonar-token || secrets.SONAR_TOKEN }}
-      RESOLVED_SONAR_HOST_URL: ${{ secrets.sonar-host-url != '' && secrets.sonar-host-url || inputs.sonar-host-url != '' && inputs.sonar-host-url || vars.SONAR_HOST_URL }}
-      RESOLVED_SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key != '' && inputs.sonar-project-key || vars.SONAR_PROJECT_KEY }}
-      RESOLVED_SONAR_PROJECT_NAME: ${{ inputs.sonar-project-name != '' && inputs.sonar-project-name || vars.SONAR_PROJECT_NAME }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -201,10 +164,11 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Validate Sonar configuration
-        if: ${{ inputs.run-sonar && (env.RESOLVED_SONAR_TOKEN == '' || env.RESOLVED_SONAR_HOST_URL == '' || env.RESOLVED_SONAR_PROJECT_KEY == '') }}
+        if: ${{ inputs.run-sonar && (inputs.sonar-token == '' || inputs.sonar-host-url == '' || inputs.sonar-project-key == '') }}
         shell: bash
         run: |
-          echo "Missing Sonar configuration. Ensure token, host URL and project key are available via inputs, secrets, or org/repo vars." >&2
+          set -euo pipefail
+          echo "Missing Sonar configuration. Ensure token, host URL and project key were resolved in workflow-templates/ci-cd.yml." >&2
           exit 1
 
       - name: Run custom Sonar command
@@ -214,20 +178,20 @@ jobs:
           command: ${{ inputs.sonar-command }}
           working-directory: ${{ inputs.working-directory }}
         env:
-          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ env.RESOLVED_SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ inputs.sonar-token }}
+          SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
 
       - name: Run Sonar scan action
         if: ${{ inputs.run-sonar && inputs.sonar-command == '' }}
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ env.RESOLVED_SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ inputs.sonar-token }}
+          SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
         with:
           projectBaseDir: ${{ inputs.working-directory }}
           args: >-
-            -Dsonar.projectKey=${{ env.RESOLVED_SONAR_PROJECT_KEY }}
-            -Dsonar.projectName=${{ env.RESOLVED_SONAR_PROJECT_NAME }}
+            -Dsonar.projectKey=${{ inputs.sonar-project-key }}
+            -Dsonar.projectName=${{ inputs.sonar-project-name }}
             -Dsonar.sources=${{ inputs.sonar-sources }}
 
       - name: Enforce quality gate
@@ -235,7 +199,7 @@ jobs:
         uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
         timeout-minutes: 5
         env:
-          SONAR_TOKEN: ${{ env.RESOLVED_SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ inputs.sonar-token }}
 
       - name: Upload build artifact
         if: ${{ inputs.upload-artifact }}

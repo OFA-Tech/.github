@@ -1,0 +1,35 @@
+name: CI Guardrails
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- latest
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+      - name: Run actionlint for templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          actionlint workflow-templates/*.yml workflows/*.yml
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Run shellcheck on scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck

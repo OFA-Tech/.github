@@ -18,7 +18,7 @@ on:
         type: string
         default: ""
       working-directory:
-        description: Working directory for all build and test commands
+        description: Working directory for all commands
         required: false
         type: string
         default: .
@@ -29,409 +29,329 @@ on:
         default: self-hosted
 
       run-build:
-        description: Enables build step
         required: false
         type: boolean
         default: true
       build-command:
-        description: Optional build command override
         required: false
         type: string
         default: ""
 
       run-tests:
-        description: Enables test stages
         required: false
         type: boolean
         default: true
       run-unit-tests:
-        description: Enables unit tests
         required: false
         type: boolean
         default: true
       unit-test-command:
-        description: Optional unit test command override
         required: false
         type: string
         default: ""
       run-integration-tests:
-        description: Enables integration tests
         required: false
         type: boolean
         default: false
       integration-test-command:
-        description: Optional integration test command override
         required: false
         type: string
         default: ""
       run-mutation-tests:
-        description: Enables mutation tests
         required: false
         type: boolean
         default: false
       mutation-test-command:
-        description: Optional mutation test command override
         required: false
         type: string
         default: ""
       test-command:
-        description: Legacy generic test command fallback
         required: false
         type: string
         default: ""
 
       run-sonar:
-        description: Enables SonarQube stage
         required: false
         type: boolean
         default: false
       sonar-project-key:
-        description: Optional SonarQube project key override
         required: false
         type: string
         default: ""
       sonar-project-name:
-        description: Optional SonarQube project name override
         required: false
         type: string
         default: ""
       sonar-sources:
-        description: Sonar sources path
         required: false
         type: string
         default: .
       sonar-command:
-        description: Optional custom Sonar command
         required: false
         type: string
         default: ""
       enforce-quality-gate:
-        description: Fail stage if quality gate is red
         required: false
         type: boolean
         default: false
       sonar-token:
-        description: Optional Sonar token override
         required: false
         type: string
         default: ""
       sonar-host-url:
-        description: Optional Sonar host URL override
         required: false
         type: string
         default: ""
 
       upload-artifact:
-        description: Upload build artifact for deploy stage
         required: false
         type: boolean
         default: false
       artifact-name:
-        description: Build artifact name
         required: false
         type: string
         default: build-output
       artifact-path:
-        description: Build artifact path or glob
         required: false
         type: string
         default: .
 
       run-docker-image:
-        description: Build and push docker image stage
         required: false
         type: boolean
         default: false
       docker-registry:
-        description: Docker registry host (docker.io, ghcr.io, etc.)
         required: false
         type: string
         default: docker.io
       docker-image-name:
-        description: Optional docker image name override
         required: false
         type: string
         default: ""
       dockerfile:
-        description: Path to Dockerfile
         required: false
         type: string
         default: Dockerfile
       docker-context:
-        description: Docker build context
         required: false
         type: string
         default: .
       docker-version:
-        description: Optional explicit docker image version override
         required: false
         type: string
         default: ""
       docker-push-latest:
-        description: Also push latest tag
         required: false
         type: boolean
         default: true
       docker-username:
-        description: Optional docker username override
         required: false
         type: string
         default: ""
       docker-password:
-        description: Optional docker password/token override
         required: false
         type: string
         default: ""
 
       run-deploy:
-        description: Enables deploy stage
         required: false
         type: boolean
         default: true
       deploy-strategy:
-        description: Deployment strategy (portainer, docker, ssh-artifact)
         required: true
         type: string
       deploy-mode:
-        description: Deploy mode for docker strategy (docker-compose, docker-run, docker-swarm)
         required: false
         type: string
         default: docker-compose
       deploy-host:
-        description: Optional deploy host override
         required: false
         type: string
         default: ""
       deploy-port:
-        description: Deploy SSH port
         required: false
         type: string
         default: ""
       deploy-username:
-        description: Optional deploy username override
         required: false
         type: string
         default: ""
       deploy-remote-path:
-        description: Optional deploy remote path override
         required: false
         type: string
         default: ""
       deploy-source-glob:
-        description: Files to upload relative to downloaded artifact path
         required: false
         type: string
         default: "**/*"
       deploy-strip-components:
-        description: Number of path components to strip when uploading
         required: false
         type: string
         default: "0"
       deploy-overwrite:
-        description: Overwrite remote files
         required: false
         type: boolean
         default: true
       deploy-clean-remote:
-        description: Remove remote path before upload
         required: false
         type: boolean
         default: false
       deploy-docker-image:
-        description: Optional docker image override for deploy modes using containers
         required: false
         type: string
         default: ""
       deploy-docker-compose-file:
-        description: Remote docker compose file path
         required: false
         type: string
         default: docker-compose.yml
       deploy-docker-run-command:
-        description: Remote docker run command (without leading docker)
         required: false
         type: string
         default: ""
       deploy-docker-swarm-service-name:
-        description: Swarm service name for docker-swarm mode
         required: false
         type: string
         default: ""
       deploy-docker-swarm-replicas:
-        description: Optional swarm replicas for docker-swarm mode
         required: false
         type: string
         default: ""
       deploy-docker-registry:
-        description: Optional registry host for remote docker login
         required: false
         type: string
         default: docker.io
       deploy-docker-username:
-        description: Optional docker username override for remote docker login
         required: false
         type: string
         default: ""
       deploy-docker-password:
-        description: Optional docker password/token override for remote docker login
         required: false
         type: string
         default: ""
       deploy-ssh-private-key:
-        description: Optional deploy key override
         required: false
         type: string
         default: ""
 
       portainer-operation:
-        description: Portainer operation (deploy or update)
         required: false
         type: string
         default: update
       portainer-stack-type:
-        description: Portainer stack type (swarm or standalone)
         required: false
         type: string
         default: swarm
       portainer-stack-id:
-        description: Portainer stack ID for update and rollback
         required: false
         type: string
         default: ""
       portainer-stack-name:
-        description: Portainer stack name for deploy
         required: false
         type: string
         default: ""
       portainer-stack-file-content:
-        description: Stack file content for deploy or update
         required: false
         type: string
         default: ""
       portainer-stack-file-path:
-        description: Path to stack file in repository for deploy or update
         required: false
         type: string
         default: ""
       portainer-swarm-id:
-        description: Swarm ID for Portainer deploy
         required: false
         type: string
         default: ""
       portainer-env-json:
-        description: Optional Portainer env JSON array
         required: false
         type: string
         default: ""
       portainer-prune:
-        description: Prune during Portainer deploy and rollback
         required: false
         type: boolean
         default: false
       portainer-repull-image-and-redeploy:
-        description: Repull image and redeploy in Portainer
         required: false
         type: boolean
         default: true
       portainer-prefer-git-redeploy:
-        description: Prefer git redeploy for Portainer git stacks
         required: false
         type: boolean
         default: true
       portainer-endpoint-id:
-        description: Portainer endpoint ID override
         required: false
         type: string
         default: ""
       portainer-url:
-        description: Portainer URL override
         required: false
         type: string
         default: ""
       portainer-rollback-to:
-        description: Optional Portainer rollback target
         required: false
         type: string
         default: ""
 
       run-post-deploy-tests:
-        description: Enables post-deploy tests
         required: false
         type: boolean
         default: true
       run-health-check:
-        description: Run deployment health checks
         required: false
         type: boolean
         default: true
       health-check-url:
-        description: URL for health checks
         required: false
         type: string
         default: ""
       health-check-command:
-        description: Optional custom health check command
         required: false
         type: string
         default: ""
       health-check-expected-status:
-        description: Expected HTTP status for health checks
         required: false
         type: string
         default: "200"
       health-check-retries:
-        description: Health check retries
         required: false
         type: string
         default: "12"
       health-check-interval-seconds:
-        description: Health check interval in seconds
         required: false
         type: string
         default: "10"
       run-load-test:
-        description: Run load test stage when command is available
         required: false
         type: boolean
         default: false
       load-test-command:
-        description: Optional load test command
         required: false
         type: string
         default: ""
       run-contract-test:
-        description: Run contract test stage when command is available
         required: false
         type: boolean
         default: false
       contract-test-command:
-        description: Optional contract test command
         required: false
         type: string
         default: ""
 
       run-rollback:
-        description: Enable rollback stage
         required: false
         type: boolean
         default: true
       auto-rollback:
-        description: Rollback automatically when post-deploy tests fail
         required: false
         type: boolean
         default: true
       manual-rollback:
-        description: Force rollback execution (use with protected environment)
         required: false
         type: boolean
         default: false
       docker-rollback-command:
-        description: Custom rollback command for docker standalone strategy
         required: false
         type: string
         default: ""
       ssh-rollback-command:
-        description: Rollback command for ssh artifact strategy
         required: false
         type: string
         default: ""
@@ -455,7 +375,71 @@ on:
         required: false
 
 jobs:
+  resolve-contract:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      sonar-project-key: ${{ steps.resolve.outputs.sonar-project-key }}
+      sonar-project-name: ${{ steps.resolve.outputs.sonar-project-name }}
+      sonar-token: ${{ steps.resolve.outputs.sonar-token }}
+      sonar-host-url: ${{ steps.resolve.outputs.sonar-host-url }}
+      docker-username: ${{ steps.resolve.outputs.docker-username }}
+      docker-password: ${{ steps.resolve.outputs.docker-password }}
+      deploy-host: ${{ steps.resolve.outputs.deploy-host }}
+      deploy-port: ${{ steps.resolve.outputs.deploy-port }}
+      deploy-username: ${{ steps.resolve.outputs.deploy-username }}
+      deploy-remote-path: ${{ steps.resolve.outputs.deploy-remote-path }}
+      deploy-ssh-private-key: ${{ steps.resolve.outputs.deploy-ssh-private-key }}
+      deploy-docker-username: ${{ steps.resolve.outputs.deploy-docker-username }}
+      deploy-docker-password: ${{ steps.resolve.outputs.deploy-docker-password }}
+      deploy-docker-image: ${{ steps.resolve.outputs.deploy-docker-image }}
+      portainer-url: ${{ steps.resolve.outputs.portainer-url }}
+      portainer-endpoint-id: ${{ steps.resolve.outputs.portainer-endpoint-id }}
+      portainer-api-key: ${{ steps.resolve.outputs.portainer-api-key }}
+    steps:
+      - id: resolve
+        shell: bash
+        env:
+          RESOLVED_SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key != '' && inputs.sonar-project-key || vars.SONAR_PROJECT_KEY }}
+          RESOLVED_SONAR_PROJECT_NAME: ${{ inputs.sonar-project-name != '' && inputs.sonar-project-name || vars.SONAR_PROJECT_NAME }}
+          RESOLVED_SONAR_TOKEN: ${{ inputs.sonar-token != '' && inputs.sonar-token || secrets.sonar-token != '' && secrets.sonar-token }}
+          RESOLVED_SONAR_HOST_URL: ${{ inputs.sonar-host-url != '' && inputs.sonar-host-url || secrets.sonar-host-url != '' && secrets.sonar-host-url || vars.SONAR_HOST_URL }}
+          RESOLVED_DOCKER_USERNAME: ${{ inputs.docker-username != '' && inputs.docker-username || secrets.docker-username != '' && secrets.docker-username || vars.DOCKER_USERNAME }}
+          RESOLVED_DOCKER_PASSWORD: ${{ inputs.docker-password != '' && inputs.docker-password || secrets.docker-password != '' && secrets.docker-password }}
+          RESOLVED_DEPLOY_HOST: ${{ inputs.deploy-host != '' && inputs.deploy-host || vars.DEPLOY_HOST }}
+          RESOLVED_DEPLOY_PORT: ${{ inputs.deploy-port != '' && inputs.deploy-port || vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
+          RESOLVED_DEPLOY_USERNAME: ${{ inputs.deploy-username != '' && inputs.deploy-username || vars.DEPLOY_USERNAME }}
+          RESOLVED_DEPLOY_REMOTE_PATH: ${{ inputs.deploy-remote-path != '' && inputs.deploy-remote-path || vars.DEPLOY_REMOTE_PATH }}
+          RESOLVED_DEPLOY_SSH_PRIVATE_KEY: ${{ inputs.deploy-ssh-private-key != '' && inputs.deploy-ssh-private-key || secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key }}
+          RESOLVED_DEPLOY_DOCKER_USERNAME: ${{ inputs.deploy-docker-username != '' && inputs.deploy-docker-username || secrets.deploy-docker-username != '' && secrets.deploy-docker-username || vars.DOCKER_USERNAME }}
+          RESOLVED_DEPLOY_DOCKER_PASSWORD: ${{ inputs.deploy-docker-password != '' && inputs.deploy-docker-password || secrets.deploy-docker-password != '' && secrets.deploy-docker-password }}
+          RESOLVED_DEPLOY_DOCKER_IMAGE: ${{ inputs.deploy-docker-image }}
+          RESOLVED_PORTAINER_URL: ${{ inputs.portainer-url != '' && inputs.portainer-url || vars.PORTAINER_URL }}
+          RESOLVED_PORTAINER_ENDPOINT_ID: ${{ inputs.portainer-endpoint-id != '' && inputs.portainer-endpoint-id || vars.PORTAINER_ENDPOINT_ID }}
+          RESOLVED_PORTAINER_API_KEY: ${{ secrets.portainer-api-key != '' && secrets.portainer-api-key }}
+        run: |
+          set -euo pipefail
+          {
+            echo "sonar-project-key=${RESOLVED_SONAR_PROJECT_KEY}"
+            echo "sonar-project-name=${RESOLVED_SONAR_PROJECT_NAME}"
+            echo "sonar-token=${RESOLVED_SONAR_TOKEN}"
+            echo "sonar-host-url=${RESOLVED_SONAR_HOST_URL}"
+            echo "docker-username=${RESOLVED_DOCKER_USERNAME}"
+            echo "docker-password=${RESOLVED_DOCKER_PASSWORD}"
+            echo "deploy-host=${RESOLVED_DEPLOY_HOST}"
+            echo "deploy-port=${RESOLVED_DEPLOY_PORT}"
+            echo "deploy-username=${RESOLVED_DEPLOY_USERNAME}"
+            echo "deploy-remote-path=${RESOLVED_DEPLOY_REMOTE_PATH}"
+            echo "deploy-ssh-private-key=${RESOLVED_DEPLOY_SSH_PRIVATE_KEY}"
+            echo "deploy-docker-username=${RESOLVED_DEPLOY_DOCKER_USERNAME}"
+            echo "deploy-docker-password=${RESOLVED_DEPLOY_DOCKER_PASSWORD}"
+            echo "deploy-docker-image=${RESOLVED_DEPLOY_DOCKER_IMAGE}"
+            echo "portainer-url=${RESOLVED_PORTAINER_URL}"
+            echo "portainer-endpoint-id=${RESOLVED_PORTAINER_ENDPOINT_ID}"
+            echo "portainer-api-key=${RESOLVED_PORTAINER_API_KEY}"
+          } >> "$GITHUB_OUTPUT"
+
   verify:
+    needs: [resolve-contract]
     if: ${{ inputs.run-build || inputs.run-tests || inputs.run-sonar || inputs.upload-artifact }}
     uses: ./.github/workflows/stage-verify.yml
     with:
@@ -475,23 +459,20 @@ jobs:
       mutation-test-command: ${{ inputs.mutation-test-command }}
       test-command: ${{ inputs.test-command }}
       run-sonar: ${{ inputs.run-sonar }}
-      sonar-project-key: ${{ inputs.sonar-project-key }}
-      sonar-project-name: ${{ inputs.sonar-project-name }}
+      sonar-project-key: ${{ needs.resolve-contract.outputs.sonar-project-key }}
+      sonar-project-name: ${{ needs.resolve-contract.outputs.sonar-project-name }}
       sonar-sources: ${{ inputs.sonar-sources }}
       sonar-command: ${{ inputs.sonar-command }}
       enforce-quality-gate: ${{ inputs.enforce-quality-gate }}
-      sonar-token: ${{ inputs.sonar-token }}
-      sonar-host-url: ${{ inputs.sonar-host-url }}
+      sonar-token: ${{ needs.resolve-contract.outputs.sonar-token }}
+      sonar-host-url: ${{ needs.resolve-contract.outputs.sonar-host-url }}
       upload-artifact: ${{ inputs.upload-artifact }}
       artifact-name: ${{ inputs.artifact-name }}
       artifact-path: ${{ inputs.artifact-path }}
-    secrets:
-      sonar-token: ${{ secrets.sonar-token }}
-      sonar-host-url: ${{ secrets.sonar-host-url }}
 
   docker:
+    needs: [resolve-contract, verify]
     if: ${{ always() && inputs.run-docker-image && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
-    needs: [verify]
     uses: ./.github/workflows/stage-docker.yml
     with:
       runner: ${{ inputs.runner }}
@@ -501,15 +482,12 @@ jobs:
       context: ${{ inputs.docker-context }}
       version: ${{ inputs.docker-version }}
       push-latest: ${{ inputs.docker-push-latest }}
-      docker-username: ${{ inputs.docker-username }}
-      docker-password: ${{ inputs.docker-password }}
-    secrets:
-      docker-password: ${{ secrets.docker-password }}
-      docker-username: ${{ secrets.docker-username }}
+      docker-username: ${{ needs.resolve-contract.outputs.docker-username }}
+      docker-password: ${{ needs.resolve-contract.outputs.docker-password }}
 
   deploy-portainer:
+    needs: [resolve-contract, verify, docker]
     if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'portainer' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.docker.result == 'success' || needs.docker.result == 'skipped') }}
-    needs: [verify, docker]
     uses: ./.github/workflows/stage-portainer.yml
     with:
       operation: ${{ inputs.portainer-operation }}
@@ -517,71 +495,65 @@ jobs:
       stack-id: ${{ inputs.portainer-stack-id }}
       stack-name: ${{ inputs.portainer-stack-name }}
       stack-file-content: ${{ inputs.portainer-stack-file-content }}
-      stack-file-path: ${{ inputs.portainer-stack-file-path }}
       swarm-id: ${{ inputs.portainer-swarm-id }}
       env-json: ${{ inputs.portainer-env-json }}
       prune: ${{ inputs.portainer-prune }}
       repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
       prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy }}
-      endpoint-id: ${{ inputs.portainer-endpoint-id }}
-      portainer-url: ${{ inputs.portainer-url }}
+      endpoint-id: ${{ needs.resolve-contract.outputs.portainer-endpoint-id }}
+      portainer-url: ${{ needs.resolve-contract.outputs.portainer-url }}
       runner: ${{ inputs.runner }}
-    secrets:
-      portainer-api-key: ${{ secrets.portainer-api-key }}
+      portainer-api-key: ${{ needs.resolve-contract.outputs.portainer-api-key }}
 
   deploy-docker:
+    needs: [resolve-contract, verify, docker]
     if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'docker' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.docker.result == 'success' || needs.docker.result == 'skipped') }}
-    needs: [verify, docker]
     uses: ./.github/workflows/stage-deploy.yml
     with:
       deploy-mode: ${{ inputs.deploy-mode }}
       artifact-name: ${{ inputs.artifact-name }}
       artifact-path: ${{ inputs.artifact-path }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
-      remote-path: ${{ inputs.deploy-remote-path }}
+      host: ${{ needs.resolve-contract.outputs.deploy-host }}
+      port: ${{ needs.resolve-contract.outputs.deploy-port }}
+      username: ${{ needs.resolve-contract.outputs.deploy-username }}
+      remote-path: ${{ needs.resolve-contract.outputs.deploy-remote-path }}
       source-glob: ${{ inputs.deploy-source-glob }}
       strip-components: ${{ inputs.deploy-strip-components }}
       overwrite: ${{ inputs.deploy-overwrite }}
       clean-remote: ${{ inputs.deploy-clean-remote }}
-      docker-image: ${{ inputs.deploy-docker-image != '' && inputs.deploy-docker-image || needs.docker.outputs.image-version-tag }}
+      docker-image: ${{ needs.resolve-contract.outputs.deploy-docker-image != '' && needs.resolve-contract.outputs.deploy-docker-image || needs.docker.outputs.image-version-tag }}
       docker-compose-file: ${{ inputs.deploy-docker-compose-file }}
       docker-run-command: ${{ inputs.deploy-docker-run-command }}
       docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
       docker-swarm-replicas: ${{ inputs.deploy-docker-swarm-replicas }}
       docker-registry: ${{ inputs.deploy-docker-registry }}
-      docker-username: ${{ inputs.deploy-docker-username }}
-      docker-password: ${{ inputs.deploy-docker-password }}
+      docker-username: ${{ needs.resolve-contract.outputs.deploy-docker-username }}
+      docker-password: ${{ needs.resolve-contract.outputs.deploy-docker-password }}
       runner: ${{ inputs.runner }}
-    secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
-      docker-password: ${{ secrets.deploy-docker-password }}
-      docker-username: ${{ secrets.deploy-docker-username }}
+      ssh-private-key: ${{ needs.resolve-contract.outputs.deploy-ssh-private-key }}
 
   deploy-ssh-artifact:
+    needs: [resolve-contract, verify]
     if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'ssh-artifact' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
-    needs: [verify]
     uses: ./.github/workflows/stage-deploy.yml
     with:
       deploy-mode: sftp
       artifact-name: ${{ inputs.artifact-name }}
       artifact-path: ${{ inputs.artifact-path }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
-      remote-path: ${{ inputs.deploy-remote-path }}
+      host: ${{ needs.resolve-contract.outputs.deploy-host }}
+      port: ${{ needs.resolve-contract.outputs.deploy-port }}
+      username: ${{ needs.resolve-contract.outputs.deploy-username }}
+      remote-path: ${{ needs.resolve-contract.outputs.deploy-remote-path }}
       source-glob: ${{ inputs.deploy-source-glob }}
       strip-components: ${{ inputs.deploy-strip-components }}
       overwrite: ${{ inputs.deploy-overwrite }}
       clean-remote: ${{ inputs.deploy-clean-remote }}
       runner: ${{ inputs.runner }}
-    secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+      ssh-private-key: ${{ needs.resolve-contract.outputs.deploy-ssh-private-key }}
 
   post-deploy:
-    if: ${{ always() && inputs.run-post-deploy-tests && (needs.deploy-portainer.result == 'success' || needs.deploy-docker.result == 'success' || needs.deploy-ssh-artifact.result == 'success') }}
     needs: [deploy-portainer, deploy-docker, deploy-ssh-artifact]
+    if: ${{ always() && inputs.run-post-deploy-tests && (needs.deploy-portainer.result == 'success' || needs.deploy-docker.result == 'success' || needs.deploy-ssh-artifact.result == 'success') }}
     uses: ./.github/workflows/stage-post-deploy.yml
     with:
       runner: ${{ inputs.runner }}
@@ -598,26 +570,24 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
 
   rollback:
+    needs: [resolve-contract, deploy-portainer, deploy-docker, deploy-ssh-artifact, post-deploy]
     if: ${{ always() && inputs.run-rollback && ((inputs.auto-rollback && needs.post-deploy.result == 'failure') || inputs.manual-rollback) }}
-    needs: [deploy-portainer, deploy-docker, deploy-ssh-artifact, post-deploy]
-    environment: rollback
     uses: ./.github/workflows/stage-rollback.yml
     with:
       strategy: ${{ inputs.deploy-strategy }}
       runner: ${{ inputs.runner }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
+      host: ${{ needs.resolve-contract.outputs.deploy-host }}
+      port: ${{ needs.resolve-contract.outputs.deploy-port }}
+      username: ${{ needs.resolve-contract.outputs.deploy-username }}
+      ssh-private-key: ${{ needs.resolve-contract.outputs.deploy-ssh-private-key }}
       ssh-rollback-command: ${{ inputs.ssh-rollback-command }}
       docker-mode: ${{ inputs.deploy-mode == 'docker-swarm' && 'swarm' || 'standalone' }}
       docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
       docker-rollback-command: ${{ inputs.docker-rollback-command != '' && inputs.docker-rollback-command || inputs.deploy-docker-run-command }}
-      portainer-url: ${{ inputs.portainer-url }}
-      endpoint-id: ${{ inputs.portainer-endpoint-id }}
+      portainer-url: ${{ needs.resolve-contract.outputs.portainer-url }}
+      endpoint-id: ${{ needs.resolve-contract.outputs.portainer-endpoint-id }}
+      portainer-api-key: ${{ needs.resolve-contract.outputs.portainer-api-key }}
       portainer-stack-id: ${{ inputs.portainer-stack-id }}
       portainer-rollback-to: ${{ inputs.portainer-rollback-to }}
       portainer-prune: ${{ inputs.portainer-prune }}
       portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
-    secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
-      portainer-api-key: ${{ secrets.portainer-api-key }}

@@ -4,103 +4,86 @@ on:
   workflow_call:
     inputs:
       operation:
-        description: deploy | update | rollback | scale
         required: true
         type: string
       stack-type:
-        description: swarm | standalone
         required: false
         type: string
         default: swarm
       stack-id:
-        description: Portainer stack ID (required for update, rollback, scale)
         required: false
         type: string
         default: ""
       stack-name:
-        description: Stack name (required for deploy)
         required: false
         type: string
         default: ""
       stack-file-content:
-        description: Stack/compose text content (required for deploy and scale)
         required: false
         type: string
         default: ""
       swarm-id:
-        description: Swarm cluster ID (required for swarm deploy)
         required: false
         type: string
         default: ""
       rollback-to:
-        description: Rollback target version (optional)
         required: false
         type: string
         default: ""
       env-json:
-        description: Optional JSON array of env vars [{"name":"A","value":"B"}]
         required: false
         type: string
         default: ""
       prune:
-        description: Prune services not referenced anymore
         required: false
         type: boolean
         default: false
       repull-image-and-redeploy:
-        description: Force image repull and redeploy
         required: false
         type: boolean
         default: true
       prefer-git-redeploy:
-        description: On update, prefer /stacks/{id}/git/redeploy for Git stacks
         required: false
         type: boolean
         default: true
       endpoint-id:
-        description: Portainer endpoint ID
         required: false
         type: string
         default: ""
       portainer-url:
-        description: Portainer base URL
+        required: false
+        type: string
+        default: ""
+      portainer-api-key:
         required: false
         type: string
         default: ""
       runner:
-        description: Runner label
         required: false
         type: string
         default: ubuntu-latest
-    secrets:
-      portainer-api-key:
-        required: false
 
 jobs:
   portainer:
     runs-on: ${{ inputs.runner }}
     permissions:
       contents: read
-    env:
-      RESOLVED_PORTAINER_URL: ${{ inputs.portainer-url != '' && inputs.portainer-url || vars.PORTAINER_URL }}
-      RESOLVED_PORTAINER_ENDPOINT_ID: ${{ inputs.endpoint-id != '' && inputs.endpoint-id || vars.PORTAINER_ENDPOINT_ID }}
-      RESOLVED_PORTAINER_API_KEY: ${{ secrets.portainer-api-key != '' && secrets.portainer-api-key || secrets.PORTAINER_API_KEY }}
     steps:
       - name: Validate Portainer configuration
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "${RESOLVED_PORTAINER_URL}" ]] || { echo "Missing Portainer URL"; exit 1; }
-          [[ -n "${RESOLVED_PORTAINER_ENDPOINT_ID}" ]] || { echo "Missing Portainer endpoint ID"; exit 1; }
-          [[ -n "${RESOLVED_PORTAINER_API_KEY}" ]] || { echo "Missing Portainer API key"; exit 1; }
+          [[ -n "${{ inputs.portainer-url }}" ]] || { echo "Missing portainer-url"; exit 1; }
+          [[ -n "${{ inputs.endpoint-id }}" ]] || { echo "Missing endpoint-id"; exit 1; }
+          [[ -n "${{ inputs.portainer-api-key }}" ]] || { echo "Missing portainer-api-key"; exit 1; }
 
       - name: Run Portainer operation
         if: ${{ inputs.operation == 'deploy' || inputs.operation == 'update' }}
         uses: ./actions/portainer/deploy-update
         with:
-          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
-          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
-          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          portainer-url: ${{ inputs.portainer-url }}
+          api-key: ${{ inputs.portainer-api-key }}
+          endpoint-id: ${{ inputs.endpoint-id }}
           stack-type: ${{ inputs.stack-type }}
           operation: ${{ inputs.operation }}
           stack-id: ${{ inputs.stack-id }}
@@ -116,9 +99,9 @@ jobs:
         if: ${{ inputs.operation == 'rollback' }}
         uses: ./actions/portainer/rollback
         with:
-          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
-          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
-          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          portainer-url: ${{ inputs.portainer-url }}
+          api-key: ${{ inputs.portainer-api-key }}
+          endpoint-id: ${{ inputs.endpoint-id }}
           stack-id: ${{ inputs.stack-id }}
           rollback-to: ${{ inputs.rollback-to }}
           prune: ${{ inputs.prune && 'true' || 'false' }}
@@ -128,9 +111,9 @@ jobs:
         if: ${{ inputs.operation == 'scale' }}
         uses: ./actions/portainer/scale
         with:
-          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
-          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
-          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          portainer-url: ${{ inputs.portainer-url }}
+          api-key: ${{ inputs.portainer-api-key }}
+          endpoint-id: ${{ inputs.endpoint-id }}
           stack-id: ${{ inputs.stack-id }}
           stack-file-content: ${{ inputs.stack-file-content }}
           prune: ${{ inputs.prune && 'true' || 'false' }}
