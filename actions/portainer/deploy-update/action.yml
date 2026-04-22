@@ -1,0 +1,224 @@
+name: Portainer Stack Deploy/Update
+description: Deploy a new Docker stack from text or update/redeploy an existing stack via the Portainer API.
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key
+    required: true
+  endpoint-id:
+    description: Portainer environment/endpoint ID
+    required: true
+  stack-type:
+    description: Stack runtime type (swarm or standalone)
+    required: true
+  operation:
+    description: deploy or update
+    required: false
+    default: deploy
+  stack-id:
+    description: Existing stack ID for update
+    required: false
+    default: ""
+  stack-name:
+    description: Stack name for deploy
+    required: false
+    default: ""
+  stack-file-content:
+    description: Stack/compose content as plain text
+    required: false
+    default: ""
+  swarm-id:
+    description: Swarm cluster ID (required for swarm deploy)
+    required: false
+    default: ""
+  env-json:
+    description: Optional JSON array of env vars, for example [{"name":"A","value":"B"}]
+    required: false
+    default: ""
+  prune:
+    description: Prune services not referenced anymore (mainly swarm)
+    required: false
+    default: "false"
+  repull-image-and-redeploy:
+    description: Force image repull and redeploy on update/redeploy
+    required: false
+    default: "true"
+  prefer-git-redeploy:
+    description: For update, prefer /stacks/{id}/git/redeploy when stack has Git config
+    required: false
+    default: "true"
+
+outputs:
+  stack-id:
+    description: Created or updated stack ID
+    value: ${{ steps.run.outputs.stack-id }}
+  operation:
+    description: Operation executed (deploy|update)
+    value: ${{ steps.run.outputs.operation }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Execute Portainer deploy/update
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        ENDPOINT_ID="${{ inputs.endpoint-id }}"
+        STACK_TYPE="${{ inputs.stack-type }}"
+        OPERATION="${{ inputs.operation }}"
+        STACK_ID="${{ inputs.stack-id }}"
+        STACK_NAME="${{ inputs.stack-name }}"
+        STACK_FILE_CONTENT="${{ inputs.stack-file-content }}"
+        SWARM_ID="${{ inputs.swarm-id }}"
+        ENV_JSON="${{ inputs.env-json }}"
+        PRUNE="${{ inputs.prune }}"
+        REPULL="${{ inputs.repull-image-and-redeploy }}"
+        PREFER_GIT_REDEPLOY="${{ inputs.prefer-git-redeploy }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        is_true() {
+          case "${1:-}" in
+            true|TRUE|1|yes|YES|on|ON) return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+
+        api() {
+          local method="$1"
+          local url="$2"
+          local body="${3:-}"
+
+          if [[ -n "$body" ]]; then
+            curl -fsSL -X "$method" \
+              -H "X-API-Key: ${API_KEY}" \
+              -H "Content-Type: application/json" \
+              --data "$body" \
+              "$url"
+          else
+            curl -fsSL -X "$method" \
+              -H "X-API-Key: ${API_KEY}" \
+              -H "Content-Type: application/json" \
+              "$url"
+          fi
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        case "$STACK_TYPE" in
+          swarm|standalone) ;;
+          *) fail "Unsupported stack-type: ${STACK_TYPE}. Use swarm or standalone." ;;
+        esac
+
+        case "$OPERATION" in
+          deploy|update) ;;
+          *) fail "Unsupported operation: ${OPERATION}. Use deploy or update." ;;
+        esac
+
+        if [[ "$OPERATION" == "deploy" ]]; then
+          [[ -n "$STACK_NAME" ]] || fail "stack-name is required for deploy"
+          [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content is required for deploy"
+
+          if [[ "$STACK_TYPE" == "swarm" && -z "$SWARM_ID" ]]; then
+            fail "swarm-id is required for swarm deploy"
+          fi
+
+          if [[ -n "$ENV_JSON" ]] && ! jq -e . >/dev/null 2>&1 <<<"$ENV_JSON"; then
+            fail "env-json is not valid JSON"
+          fi
+
+          if [[ "$STACK_TYPE" == "standalone" ]]; then
+            CREATE_URL="${PORTAINER_URL}/api/stacks/create/standalone/string?endpointId=${ENDPOINT_ID}"
+            PAYLOAD="$(jq -cn \
+              --arg name "$STACK_NAME" \
+              --arg content "$STACK_FILE_CONTENT" \
+              --argjson env "${ENV_JSON:-[]}" \
+              '{Name:$name, StackFileContent:$content, Env:$env}')"
+          else
+            CREATE_URL="${PORTAINER_URL}/api/stacks/create/swarm/string?endpointId=${ENDPOINT_ID}"
+            PAYLOAD="$(jq -cn \
+              --arg name "$STACK_NAME" \
+              --arg content "$STACK_FILE_CONTENT" \
+              --arg swarmId "$SWARM_ID" \
+              --argjson env "${ENV_JSON:-[]}" \
+              '{Name:$name, StackFileContent:$content, SwarmID:$swarmId, Env:$env}')"
+          fi
+
+          RESPONSE="$(api POST "$CREATE_URL" "$PAYLOAD")"
+          CREATED_STACK_ID="$(jq -r '.Id // .ID // empty' <<<"$RESPONSE")"
+          [[ -n "$CREATED_STACK_ID" ]] || fail "Unable to read created stack ID from Portainer response"
+
+          {
+            echo "stack-id=${CREATED_STACK_ID}"
+            echo "operation=deploy"
+          } >> "$GITHUB_OUTPUT"
+
+          exit 0
+        fi
+
+        [[ -n "$STACK_ID" ]] || fail "stack-id is required for update"
+
+        STACK_JSON="$(api GET "${PORTAINER_URL}/api/stacks/${STACK_ID}" "")"
+        HAS_GIT_CONFIG="$(jq -r 'if .GitConfig == null then "false" else "true" end' <<<"$STACK_JSON")"
+
+        if is_true "$PREFER_GIT_REDEPLOY" && [[ "$HAS_GIT_CONFIG" == "true" ]]; then
+          REDEPLOY_URL="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy?endpointId=${ENDPOINT_ID}"
+          REDEPLOY_PAYLOAD="$(jq -cn \
+            --argjson prune "$(is_true "$PRUNE" && echo true || echo false)" \
+            --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
+            '{Prune:$prune, RepullImageAndRedeploy:$repull}')"
+
+          RESPONSE="$(api PUT "$REDEPLOY_URL" "$REDEPLOY_PAYLOAD")"
+          UPDATED_STACK_ID="$(jq -r '.Id // .ID // empty' <<<"$RESPONSE")"
+          [[ -n "$UPDATED_STACK_ID" ]] || UPDATED_STACK_ID="$STACK_ID"
+
+          {
+            echo "stack-id=${UPDATED_STACK_ID}"
+            echo "operation=update"
+          } >> "$GITHUB_OUTPUT"
+
+          exit 0
+        fi
+
+        if [[ -z "$STACK_FILE_CONTENT" ]]; then
+          STACK_FILE_RESPONSE="$(api GET "${PORTAINER_URL}/api/stacks/${STACK_ID}/file" "")"
+          STACK_FILE_CONTENT="$(jq -r '.StackFileContent // empty' <<<"$STACK_FILE_RESPONSE")"
+          [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content not provided and current stack file could not be retrieved"
+        fi
+
+        if [[ -n "$ENV_JSON" ]] && ! jq -e . >/dev/null 2>&1 <<<"$ENV_JSON"; then
+          fail "env-json is not valid JSON"
+        fi
+
+        UPDATE_PAYLOAD="$(jq -cn \
+          --arg content "$STACK_FILE_CONTENT" \
+          --argjson prune "$(is_true "$PRUNE" && echo true || echo false)" \
+          --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
+          --argjson env "${ENV_JSON:-null}" \
+          '{StackFileContent:$content, Prune:$prune, RepullImageAndRedeploy:$repull}
+           + (if $env == null then {} else {Env:$env} end)')"
+
+        RESPONSE="$(api PUT "${PORTAINER_URL}/api/stacks/${STACK_ID}?endpointId=${ENDPOINT_ID}" "$UPDATE_PAYLOAD")"
+        UPDATED_STACK_ID="$(jq -r '.Id // .ID // empty' <<<"$RESPONSE")"
+        [[ -n "$UPDATED_STACK_ID" ]] || UPDATED_STACK_ID="$STACK_ID"
+
+        {
+          echo "stack-id=${UPDATED_STACK_ID}"
+          echo "operation=update"
+        } >> "$GITHUB_OUTPUT"

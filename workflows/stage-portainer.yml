@@ -4,23 +4,59 @@ on:
   workflow_call:
     inputs:
       operation:
-        description: deploy | rollback | scale
+        description: deploy | update | rollback | scale
         required: true
         type: string
-      service:
-        description: Docker Swarm service name or ID
-        required: true
+      stack-type:
+        description: swarm | standalone
+        required: false
         type: string
-      image:
-        description: Full image reference for deploy
+        default: swarm
+      stack-id:
+        description: Portainer stack ID (required for update, rollback, scale)
         required: false
         type: string
         default: ""
-      replicas:
-        description: Replica count for scale
+      stack-name:
+        description: Stack name (required for deploy)
         required: false
         type: string
         default: ""
+      stack-file-content:
+        description: Stack/compose text content (required for deploy and scale)
+        required: false
+        type: string
+        default: ""
+      swarm-id:
+        description: Swarm cluster ID (required for swarm deploy)
+        required: false
+        type: string
+        default: ""
+      rollback-to:
+        description: Rollback target version (optional)
+        required: false
+        type: string
+        default: ""
+      env-json:
+        description: Optional JSON array of env vars [{"name":"A","value":"B"}]
+        required: false
+        type: string
+        default: ""
+      prune:
+        description: Prune services not referenced anymore
+        required: false
+        type: boolean
+        default: false
+      repull-image-and-redeploy:
+        description: Force image repull and redeploy
+        required: false
+        type: boolean
+        default: true
+      prefer-git-redeploy:
+        description: On update, prefer /stacks/{id}/git/redeploy for Git stacks
+        required: false
+        type: boolean
+        default: true
       endpoint-id:
         description: Portainer endpoint ID
         required: false
@@ -31,11 +67,6 @@ on:
         required: false
         type: string
         default: ""
-      force-update:
-        description: Increment ForceUpdate on deploy
-        required: false
-        type: boolean
-        default: true
       runner:
         description: Runner label
         required: false
@@ -64,13 +95,43 @@ jobs:
           [[ -n "${RESOLVED_PORTAINER_API_KEY}" ]] || { echo "Missing Portainer API key"; exit 1; }
 
       - name: Run Portainer operation
-        uses: ./actions/portainer-service
+        if: ${{ inputs.operation == 'deploy' || inputs.operation == 'update' }}
+        uses: ./actions/portainer/deploy-update
         with:
           portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
           api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
           endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          stack-type: ${{ inputs.stack-type }}
           operation: ${{ inputs.operation }}
-          service: ${{ inputs.service }}
-          image: ${{ inputs.image }}
-          replicas: ${{ inputs.replicas }}
-          force-update: ${{ inputs.force-update && 'true' || 'false' }}
+          stack-id: ${{ inputs.stack-id }}
+          stack-name: ${{ inputs.stack-name }}
+          stack-file-content: ${{ inputs.stack-file-content }}
+          swarm-id: ${{ inputs.swarm-id }}
+          env-json: ${{ inputs.env-json }}
+          prune: ${{ inputs.prune && 'true' || 'false' }}
+          repull-image-and-redeploy: ${{ inputs.repull-image-and-redeploy && 'true' || 'false' }}
+          prefer-git-redeploy: ${{ inputs.prefer-git-redeploy && 'true' || 'false' }}
+
+      - name: Rollback Portainer stack
+        if: ${{ inputs.operation == 'rollback' }}
+        uses: ./actions/portainer/rollback
+        with:
+          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
+          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
+          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          stack-id: ${{ inputs.stack-id }}
+          rollback-to: ${{ inputs.rollback-to }}
+          prune: ${{ inputs.prune && 'true' || 'false' }}
+          repull-image-and-redeploy: ${{ inputs.repull-image-and-redeploy && 'true' || 'false' }}
+
+      - name: Scale Portainer stack
+        if: ${{ inputs.operation == 'scale' }}
+        uses: ./actions/portainer/scale
+        with:
+          portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
+          api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
+          endpoint-id: ${{ env.RESOLVED_PORTAINER_ENDPOINT_ID }}
+          stack-id: ${{ inputs.stack-id }}
+          stack-file-content: ${{ inputs.stack-file-content }}
+          prune: ${{ inputs.prune && 'true' || 'false' }}
+          repull-image-and-redeploy: ${{ inputs.repull-image-and-redeploy && 'true' || 'false' }}

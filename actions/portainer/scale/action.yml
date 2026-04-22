@@ -1,0 +1,86 @@
+name: Portainer Stack Scale
+description: Scale a Docker standalone or swarm stack by updating stack file content through the Portainer API.
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key
+    required: true
+  endpoint-id:
+    description: Portainer environment/endpoint ID
+    required: true
+  stack-id:
+    description: Stack ID to scale
+    required: true
+  stack-file-content:
+    description: Updated stack/compose text containing the desired replica/scale changes
+    required: true
+  prune:
+    description: Prune services not referenced anymore (mainly swarm)
+    required: false
+    default: "false"
+  repull-image-and-redeploy:
+    description: Force image repull and redeploy when applying scale update
+    required: false
+    default: "false"
+
+outputs:
+  stack-id:
+    description: Scaled stack ID
+    value: ${{ steps.run.outputs.stack-id }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Execute Portainer scale
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        ENDPOINT_ID="${{ inputs.endpoint-id }}"
+        STACK_ID="${{ inputs.stack-id }}"
+        STACK_FILE_CONTENT="${{ inputs.stack-file-content }}"
+        PRUNE="${{ inputs.prune }}"
+        REPULL="${{ inputs.repull-image-and-redeploy }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        is_true() {
+          case "${1:-}" in
+            true|TRUE|1|yes|YES|on|ON) return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content is required"
+
+        PAYLOAD="$(jq -cn \
+          --arg content "$STACK_FILE_CONTENT" \
+          --argjson prune "$(is_true "$PRUNE" && echo true || echo false)" \
+          --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
+          '{StackFileContent:$content, Prune:$prune, RepullImageAndRedeploy:$repull}')"
+
+        curl -fsSL -X PUT \
+          -H "X-API-Key: ${API_KEY}" \
+          -H "Content-Type: application/json" \
+          --data "$PAYLOAD" \
+          "${PORTAINER_URL}/api/stacks/${STACK_ID}?endpointId=${ENDPOINT_ID}" \
+          >/dev/null
+
+        echo "stack-id=${STACK_ID}" >> "$GITHUB_OUTPUT"
