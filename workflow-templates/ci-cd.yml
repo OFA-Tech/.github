@@ -1,4 +1,4 @@
-name: OFA-Tech CI/CD Pipeline
+name: OFA-Tech CI/CD Core
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ on:
         type: string
         default: ""
       working-directory:
-        description: Working directory for all verification steps
+        description: Working directory for all build and test commands
         required: false
         type: string
         default: .
@@ -26,10 +26,10 @@ on:
         description: Runner label for all stages
         required: false
         type: string
-        default: ubuntu-latest
+        default: self-hosted
 
       run-build:
-        description: Enables build verification step
+        description: Enables build step
         required: false
         type: boolean
         default: true
@@ -40,18 +40,48 @@ on:
         default: ""
 
       run-tests:
-        description: Enables test verification step
+        description: Enables test stages
         required: false
         type: boolean
         default: true
+      run-unit-tests:
+        description: Enables unit tests
+        required: false
+        type: boolean
+        default: true
+      unit-test-command:
+        description: Optional unit test command override
+        required: false
+        type: string
+        default: ""
+      run-integration-tests:
+        description: Enables integration tests
+        required: false
+        type: boolean
+        default: false
+      integration-test-command:
+        description: Optional integration test command override
+        required: false
+        type: string
+        default: ""
+      run-mutation-tests:
+        description: Enables mutation tests
+        required: false
+        type: boolean
+        default: false
+      mutation-test-command:
+        description: Optional mutation test command override
+        required: false
+        type: string
+        default: ""
       test-command:
-        description: Optional test command override
+        description: Legacy generic test command fallback
         required: false
         type: string
         default: ""
 
       run-sonar:
-        description: Enables SonarQube verification step
+        description: Enables SonarQube stage
         required: false
         type: boolean
         default: false
@@ -92,7 +122,7 @@ on:
         default: ""
 
       upload-artifact:
-        description: Upload verification artifact for later deploy
+        description: Upload build artifact for deploy stage
         required: false
         type: boolean
         default: false
@@ -107,11 +137,11 @@ on:
         type: string
         default: .
 
-      run-docker:
-        description: Enables docker image build and push stage
+      run-docker-image:
+        description: Build and push docker image stage
         required: false
         type: boolean
-        default: true
+        default: false
       docker-registry:
         description: Docker registry host (docker.io, ghcr.io, etc.)
         required: false
@@ -157,9 +187,13 @@ on:
         description: Enables deploy stage
         required: false
         type: boolean
-        default: false
+        default: true
+      deploy-strategy:
+        description: Deployment strategy (portainer, docker, ssh-artifact)
+        required: true
+        type: string
       deploy-mode:
-        description: Deploy mode (sftp, docker-compose, docker-run)
+        description: Deploy mode for docker strategy (docker-compose, docker-run, docker-swarm)
         required: false
         type: string
         default: docker-compose
@@ -218,6 +252,16 @@ on:
         required: false
         type: string
         default: ""
+      deploy-docker-swarm-service-name:
+        description: Swarm service name for docker-swarm mode
+        required: false
+        type: string
+        default: ""
+      deploy-docker-swarm-replicas:
+        description: Optional swarm replicas for docker-swarm mode
+        required: false
+        type: string
+        default: ""
       deploy-docker-registry:
         description: Optional registry host for remote docker login
         required: false
@@ -239,6 +283,159 @@ on:
         type: string
         default: ""
 
+      portainer-operation:
+        description: Portainer operation (deploy or update)
+        required: false
+        type: string
+        default: update
+      portainer-stack-type:
+        description: Portainer stack type (swarm or standalone)
+        required: false
+        type: string
+        default: swarm
+      portainer-stack-id:
+        description: Portainer stack ID for update and rollback
+        required: false
+        type: string
+        default: ""
+      portainer-stack-name:
+        description: Portainer stack name for deploy
+        required: false
+        type: string
+        default: ""
+      portainer-stack-file-content:
+        description: Stack file content for deploy or update
+        required: false
+        type: string
+        default: ""
+      portainer-stack-file-path:
+        description: Path to stack file in repository for deploy or update
+        required: false
+        type: string
+        default: ""
+      portainer-swarm-id:
+        description: Swarm ID for Portainer deploy
+        required: false
+        type: string
+        default: ""
+      portainer-env-json:
+        description: Optional Portainer env JSON array
+        required: false
+        type: string
+        default: ""
+      portainer-prune:
+        description: Prune during Portainer deploy and rollback
+        required: false
+        type: boolean
+        default: false
+      portainer-repull-image-and-redeploy:
+        description: Repull image and redeploy in Portainer
+        required: false
+        type: boolean
+        default: true
+      portainer-prefer-git-redeploy:
+        description: Prefer git redeploy for Portainer git stacks
+        required: false
+        type: boolean
+        default: true
+      portainer-endpoint-id:
+        description: Portainer endpoint ID override
+        required: false
+        type: string
+        default: ""
+      portainer-url:
+        description: Portainer URL override
+        required: false
+        type: string
+        default: ""
+      portainer-rollback-to:
+        description: Optional Portainer rollback target
+        required: false
+        type: string
+        default: ""
+
+      run-post-deploy-tests:
+        description: Enables post-deploy tests
+        required: false
+        type: boolean
+        default: true
+      run-health-check:
+        description: Run deployment health checks
+        required: false
+        type: boolean
+        default: true
+      health-check-url:
+        description: URL for health checks
+        required: false
+        type: string
+        default: ""
+      health-check-command:
+        description: Optional custom health check command
+        required: false
+        type: string
+        default: ""
+      health-check-expected-status:
+        description: Expected HTTP status for health checks
+        required: false
+        type: string
+        default: "200"
+      health-check-retries:
+        description: Health check retries
+        required: false
+        type: string
+        default: "12"
+      health-check-interval-seconds:
+        description: Health check interval in seconds
+        required: false
+        type: string
+        default: "10"
+      run-load-test:
+        description: Run load test stage when command is available
+        required: false
+        type: boolean
+        default: false
+      load-test-command:
+        description: Optional load test command
+        required: false
+        type: string
+        default: ""
+      run-contract-test:
+        description: Run contract test stage when command is available
+        required: false
+        type: boolean
+        default: false
+      contract-test-command:
+        description: Optional contract test command
+        required: false
+        type: string
+        default: ""
+
+      run-rollback:
+        description: Enable rollback stage
+        required: false
+        type: boolean
+        default: true
+      auto-rollback:
+        description: Rollback automatically when post-deploy tests fail
+        required: false
+        type: boolean
+        default: true
+      manual-rollback:
+        description: Force rollback execution (use with protected environment)
+        required: false
+        type: boolean
+        default: false
+      docker-rollback-command:
+        description: Custom rollback command for docker standalone strategy
+        required: false
+        type: string
+        default: ""
+      ssh-rollback-command:
+        description: Rollback command for ssh artifact strategy
+        required: false
+        type: string
+        default: ""
+
     secrets:
       sonar-token:
         required: false
@@ -254,41 +451,29 @@ on:
         required: false
       deploy-docker-username:
         required: false
+      portainer-api-key:
+        required: false
 
 jobs:
-  defaults:
-    runs-on: ${{ inputs.runner }}
-    outputs:
-      language: ${{ steps.defaults.outputs.language }}
-      language-version: ${{ steps.defaults.outputs.version }}
-      distribution: ${{ steps.defaults.outputs.distribution }}
-      build-command: ${{ steps.defaults.outputs.build-command }}
-      test-command: ${{ steps.defaults.outputs.test-command }}
-    steps:
-      - name: Resolve defaults from selected language
-        id: defaults
-        uses: ./actions/resolve-language-defaults
-        with:
-          language: ${{ inputs.language }}
-          version: ${{ inputs.language-version }}
-          distribution: ${{ inputs.distribution }}
-          build-command: ${{ inputs.build-command }}
-          test-command: ${{ inputs.test-command }}
-
   verify:
     if: ${{ inputs.run-build || inputs.run-tests || inputs.run-sonar || inputs.upload-artifact }}
-    needs: [defaults]
     uses: ./.github/workflows/stage-verify.yml
     with:
-      language: ${{ needs.defaults.outputs.language }}
-      language-version: ${{ needs.defaults.outputs.language-version }}
-      distribution: ${{ needs.defaults.outputs.distribution }}
+      language: ${{ inputs.language }}
+      language-version: ${{ inputs.language-version }}
+      distribution: ${{ inputs.distribution }}
       working-directory: ${{ inputs.working-directory }}
       runner: ${{ inputs.runner }}
       run-build: ${{ inputs.run-build }}
-      build-command: ${{ needs.defaults.outputs.build-command }}
+      build-command: ${{ inputs.build-command }}
       run-tests: ${{ inputs.run-tests }}
-      test-command: ${{ needs.defaults.outputs.test-command }}
+      run-unit-tests: ${{ inputs.run-unit-tests }}
+      unit-test-command: ${{ inputs.unit-test-command }}
+      run-integration-tests: ${{ inputs.run-integration-tests }}
+      integration-test-command: ${{ inputs.integration-test-command }}
+      run-mutation-tests: ${{ inputs.run-mutation-tests }}
+      mutation-test-command: ${{ inputs.mutation-test-command }}
+      test-command: ${{ inputs.test-command }}
       run-sonar: ${{ inputs.run-sonar }}
       sonar-project-key: ${{ inputs.sonar-project-key }}
       sonar-project-name: ${{ inputs.sonar-project-name }}
@@ -305,7 +490,7 @@ jobs:
       sonar-host-url: ${{ secrets.sonar-host-url }}
 
   docker:
-    if: ${{ always() && inputs.run-docker && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
+    if: ${{ always() && inputs.run-docker-image && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
     needs: [verify]
     uses: ./.github/workflows/stage-docker.yml
     with:
@@ -322,8 +507,30 @@ jobs:
       docker-password: ${{ secrets.docker-password }}
       docker-username: ${{ secrets.docker-username }}
 
-  deploy:
-    if: ${{ always() && inputs.run-deploy && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.docker.result == 'success' || needs.docker.result == 'skipped') }}
+  deploy-portainer:
+    if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'portainer' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.docker.result == 'success' || needs.docker.result == 'skipped') }}
+    needs: [verify, docker]
+    uses: ./.github/workflows/stage-portainer.yml
+    with:
+      operation: ${{ inputs.portainer-operation }}
+      stack-type: ${{ inputs.portainer-stack-type }}
+      stack-id: ${{ inputs.portainer-stack-id }}
+      stack-name: ${{ inputs.portainer-stack-name }}
+      stack-file-content: ${{ inputs.portainer-stack-file-content }}
+      stack-file-path: ${{ inputs.portainer-stack-file-path }}
+      swarm-id: ${{ inputs.portainer-swarm-id }}
+      env-json: ${{ inputs.portainer-env-json }}
+      prune: ${{ inputs.portainer-prune }}
+      repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
+      prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy }}
+      endpoint-id: ${{ inputs.portainer-endpoint-id }}
+      portainer-url: ${{ inputs.portainer-url }}
+      runner: ${{ inputs.runner }}
+    secrets:
+      portainer-api-key: ${{ secrets.portainer-api-key }}
+
+  deploy-docker:
+    if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'docker' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.docker.result == 'success' || needs.docker.result == 'skipped') }}
     needs: [verify, docker]
     uses: ./.github/workflows/stage-deploy.yml
     with:
@@ -341,6 +548,8 @@ jobs:
       docker-image: ${{ inputs.deploy-docker-image != '' && inputs.deploy-docker-image || needs.docker.outputs.image-version-tag }}
       docker-compose-file: ${{ inputs.deploy-docker-compose-file }}
       docker-run-command: ${{ inputs.deploy-docker-run-command }}
+      docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
+      docker-swarm-replicas: ${{ inputs.deploy-docker-swarm-replicas }}
       docker-registry: ${{ inputs.deploy-docker-registry }}
       docker-username: ${{ inputs.deploy-docker-username }}
       docker-password: ${{ inputs.deploy-docker-password }}
@@ -349,3 +558,66 @@ jobs:
       ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
       docker-password: ${{ secrets.deploy-docker-password }}
       docker-username: ${{ secrets.deploy-docker-username }}
+
+  deploy-ssh-artifact:
+    if: ${{ always() && inputs.run-deploy && inputs.deploy-strategy == 'ssh-artifact' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
+    needs: [verify]
+    uses: ./.github/workflows/stage-deploy.yml
+    with:
+      deploy-mode: sftp
+      artifact-name: ${{ inputs.artifact-name }}
+      artifact-path: ${{ inputs.artifact-path }}
+      host: ${{ inputs.deploy-host }}
+      port: ${{ inputs.deploy-port }}
+      username: ${{ inputs.deploy-username }}
+      remote-path: ${{ inputs.deploy-remote-path }}
+      source-glob: ${{ inputs.deploy-source-glob }}
+      strip-components: ${{ inputs.deploy-strip-components }}
+      overwrite: ${{ inputs.deploy-overwrite }}
+      clean-remote: ${{ inputs.deploy-clean-remote }}
+      runner: ${{ inputs.runner }}
+    secrets:
+      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+
+  post-deploy:
+    if: ${{ always() && inputs.run-post-deploy-tests && (needs.deploy-portainer.result == 'success' || needs.deploy-docker.result == 'success' || needs.deploy-ssh-artifact.result == 'success') }}
+    needs: [deploy-portainer, deploy-docker, deploy-ssh-artifact]
+    uses: ./.github/workflows/stage-post-deploy.yml
+    with:
+      runner: ${{ inputs.runner }}
+      run-health-check: ${{ inputs.run-health-check }}
+      health-check-url: ${{ inputs.health-check-url }}
+      health-check-command: ${{ inputs.health-check-command }}
+      health-check-expected-status: ${{ inputs.health-check-expected-status }}
+      health-check-retries: ${{ inputs.health-check-retries }}
+      health-check-interval-seconds: ${{ inputs.health-check-interval-seconds }}
+      run-load-test: ${{ inputs.run-load-test }}
+      load-test-command: ${{ inputs.load-test-command }}
+      run-contract-test: ${{ inputs.run-contract-test }}
+      contract-test-command: ${{ inputs.contract-test-command }}
+      working-directory: ${{ inputs.working-directory }}
+
+  rollback:
+    if: ${{ always() && inputs.run-rollback && ((inputs.auto-rollback && needs.post-deploy.result == 'failure') || inputs.manual-rollback) }}
+    needs: [deploy-portainer, deploy-docker, deploy-ssh-artifact, post-deploy]
+    environment: rollback
+    uses: ./.github/workflows/stage-rollback.yml
+    with:
+      strategy: ${{ inputs.deploy-strategy }}
+      runner: ${{ inputs.runner }}
+      host: ${{ inputs.deploy-host }}
+      port: ${{ inputs.deploy-port }}
+      username: ${{ inputs.deploy-username }}
+      ssh-rollback-command: ${{ inputs.ssh-rollback-command }}
+      docker-mode: ${{ inputs.deploy-mode == 'docker-swarm' && 'swarm' || 'standalone' }}
+      docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
+      docker-rollback-command: ${{ inputs.docker-rollback-command != '' && inputs.docker-rollback-command || inputs.deploy-docker-run-command }}
+      portainer-url: ${{ inputs.portainer-url }}
+      endpoint-id: ${{ inputs.portainer-endpoint-id }}
+      portainer-stack-id: ${{ inputs.portainer-stack-id }}
+      portainer-rollback-to: ${{ inputs.portainer-rollback-to }}
+      portainer-prune: ${{ inputs.portainer-prune }}
+      portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
+    secrets:
+      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+      portainer-api-key: ${{ secrets.portainer-api-key }}

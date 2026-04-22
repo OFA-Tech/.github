@@ -42,6 +42,36 @@ on:
         required: false
         type: boolean
         default: true
+      run-unit-tests:
+        description: Enables unit test step
+        required: false
+        type: boolean
+        default: true
+      unit-test-command:
+        description: Optional unit test command override
+        required: false
+        type: string
+        default: ""
+      run-integration-tests:
+        description: Enables integration test step
+        required: false
+        type: boolean
+        default: false
+      integration-test-command:
+        description: Optional integration test command override
+        required: false
+        type: string
+        default: ""
+      run-mutation-tests:
+        description: Enables mutation test step
+        required: false
+        type: boolean
+        default: false
+      mutation-test-command:
+        description: Optional mutation test command override
+        required: false
+        type: string
+        default: ""
       test-command:
         description: Optional test command override
         required: false
@@ -127,7 +157,7 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: ./actions/resolve-language-defaults
+        uses: ./actions/setup/resolve
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -136,7 +166,7 @@ jobs:
           test-command: ${{ inputs.test-command }}
 
       - name: Setup runtime
-        uses: ./actions/setup-runtime
+        uses: ./actions/setup/runtime
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
@@ -149,11 +179,25 @@ jobs:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}
 
-      - name: Run tests
-        if: ${{ inputs.run-tests && steps.defaults.outputs.test-command != '' }}
+      - name: Run unit tests
+        if: ${{ inputs.run-tests && inputs.run-unit-tests && (inputs.unit-test-command != '' || steps.defaults.outputs.test-command != '') }}
         uses: ./actions/run-command
         with:
-          command: ${{ steps.defaults.outputs.test-command }}
+          command: ${{ inputs.unit-test-command != '' && inputs.unit-test-command || steps.defaults.outputs.test-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run integration tests
+        if: ${{ inputs.run-tests && inputs.run-integration-tests && inputs.integration-test-command != '' }}
+        uses: ./actions/run-command
+        with:
+          command: ${{ inputs.integration-test-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run mutation tests
+        if: ${{ inputs.run-tests && inputs.run-mutation-tests && inputs.mutation-test-command != '' }}
+        uses: ./actions/run-command
+        with:
+          command: ${{ inputs.mutation-test-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Validate Sonar configuration

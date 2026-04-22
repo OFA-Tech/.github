@@ -30,6 +30,10 @@ inputs:
     description: Stack/compose content as plain text
     required: false
     default: ""
+  stack-file-path:
+    description: Path to a stack/compose file in the repository workspace
+    required: false
+    default: ""
   swarm-id:
     description: Swarm cluster ID (required for swarm deploy)
     required: false
@@ -68,6 +72,8 @@ runs:
       run: |
         set -euo pipefail
 
+        source "$GITHUB_ACTION_PATH/../../../scripts/common/action-common.sh"
+
         PORTAINER_URL="${{ inputs.portainer-url }}"
         PORTAINER_URL="${PORTAINER_URL%/}"
         API_KEY="${{ inputs.api-key }}"
@@ -77,6 +83,7 @@ runs:
         STACK_ID="${{ inputs.stack-id }}"
         STACK_NAME="${{ inputs.stack-name }}"
         STACK_FILE_CONTENT="${{ inputs.stack-file-content }}"
+        STACK_FILE_PATH="${{ inputs.stack-file-path }}"
         SWARM_ID="${{ inputs.swarm-id }}"
         ENV_JSON="${{ inputs.env-json }}"
         PRUNE="${{ inputs.prune }}"
@@ -131,9 +138,13 @@ runs:
           *) fail "Unsupported operation: ${OPERATION}. Use deploy or update." ;;
         esac
 
+        if [[ -n "$STACK_FILE_CONTENT" || -n "$STACK_FILE_PATH" ]]; then
+          STACK_FILE_CONTENT="$(common_resolve_content_or_file "$STACK_FILE_CONTENT" "$STACK_FILE_PATH")"
+        fi
+
         if [[ "$OPERATION" == "deploy" ]]; then
           [[ -n "$STACK_NAME" ]] || fail "stack-name is required for deploy"
-          [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content is required for deploy"
+          [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content or stack-file-path is required for deploy"
 
           if [[ "$STACK_TYPE" == "swarm" && -z "$SWARM_ID" ]]; then
             fail "swarm-id is required for swarm deploy"

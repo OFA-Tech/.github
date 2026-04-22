@@ -45,7 +45,7 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: ./actions/resolve-language-defaults
+        uses: ./actions/setup/resolve
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -53,7 +53,7 @@ jobs:
           test-command: ${{ inputs.test-command }}
 
       - name: Setup runtime
-        uses: ./actions/setup-runtime
+        uses: ./actions/setup/runtime
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}

@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       deploy-mode:
-        description: Deploy mode (sftp, docker-compose, docker-run)
+        description: Deploy mode (sftp, docker-compose, docker-run, docker-swarm)
         required: false
         type: string
         default: sftp
@@ -49,6 +49,16 @@ on:
         default: docker-compose.yml
       docker-run-command:
         description: Remote docker run command (without leading docker)
+        required: false
+        type: string
+        default: ""
+      docker-swarm-service-name:
+        description: Swarm service name (required for docker-swarm mode)
+        required: false
+        type: string
+        default: ""
+      docker-swarm-replicas:
+        description: Optional replicas for docker-swarm mode
         required: false
         type: string
         default: ""
@@ -132,7 +142,7 @@ jobs:
 
       - name: Upload to SFTP
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'sftp' }}
-        uses: ./actions/ssh-upload
+        uses: ./actions/ssh/upload
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -153,7 +163,7 @@ jobs:
 
       - name: Deploy with docker compose
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-compose' }}
-        uses: ./actions/ssh-command
+        uses: ./actions/ssh/command
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -174,9 +184,16 @@ jobs:
           echo "docker-image and docker-run-command are required for deploy-mode docker-run." >&2
           exit 1
 
+      - name: Validate docker-swarm deploy configuration
+        if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-swarm' && (inputs.docker-image == '' || inputs.docker-swarm-service-name == '') }}
+        shell: bash
+        run: |
+          echo "docker-image and docker-swarm-service-name are required for deploy-mode docker-swarm." >&2
+          exit 1
+
       - name: Deploy with docker run
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-run' }}
-        uses: ./actions/ssh-command
+        uses: ./actions/ssh/command
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -189,3 +206,31 @@ jobs:
             fi
             docker pull "${{ inputs.docker-image }}"
             docker ${{ inputs.docker-run-command }}
+
+      - name: Deploy with docker swarm service
+        if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-swarm' }}
+        uses: ./actions/ssh/command
+        with:
+          host: ${{ env.RESOLVED_DEPLOY_HOST }}
+          port: ${{ env.RESOLVED_DEPLOY_PORT }}
+          username: ${{ env.RESOLVED_DEPLOY_USERNAME }}
+          ssh-private-key: ${{ env.RESOLVED_SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            if [ -n "${{ env.RESOLVED_DOCKER_PASSWORD }}" ]; then
+              echo "${{ env.RESOLVED_DOCKER_PASSWORD }}" | docker login "${{ inputs.docker-registry }}" -u "${{ env.RESOLVED_DOCKER_USERNAME }}" --password-stdin
+            fi
+            docker pull "${{ inputs.docker-image }}"
+            if docker service inspect "${{ inputs.docker-swarm-service-name }}" >/dev/null 2>&1; then
+              if [ -n "${{ inputs.docker-swarm-replicas }}" ]; then
+                docker service update --image "${{ inputs.docker-image }}" --replicas "${{ inputs.docker-swarm-replicas }}" "${{ inputs.docker-swarm-service-name }}"
+              else
+                docker service update --image "${{ inputs.docker-image }}" "${{ inputs.docker-swarm-service-name }}"
+              fi
+            else
+              if [ -n "${{ inputs.docker-swarm-replicas }}" ]; then
+                docker service create --name "${{ inputs.docker-swarm-service-name }}" --replicas "${{ inputs.docker-swarm-replicas }}" "${{ inputs.docker-image }}"
+              else
+                docker service create --name "${{ inputs.docker-swarm-service-name }}" "${{ inputs.docker-image }}"
+              fi
+            fi
