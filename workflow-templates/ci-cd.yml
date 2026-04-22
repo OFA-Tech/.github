@@ -319,7 +319,12 @@ on:
         type: string
         default: ""
       portainer-env-json:
-        description: Optional Portainer env JSON array
+        description: Optional Portainer env JSON array for stack environment [{"name":"A","value":"B"}]
+        required: false
+        type: string
+        default: ""
+      portainer-replace-vars-json:
+        description: Optional JSON object for compose file variable interpolation {"VAR":"value"}. Supports ${VAR} and ${VAR:-default}. Takes precedence over environment variables.
         required: false
         type: string
         default: ""
@@ -517,8 +522,10 @@ jobs:
       portainer-stack-id: ${{ inputs.portainer-stack-id }}
       portainer-stack-name: ${{ inputs.portainer-stack-name }}
       portainer-stack-file-content: ${{ inputs.portainer-stack-file-content }}
+      portainer-stack-file-path: ${{ inputs.portainer-stack-file-path }}
       portainer-swarm-id: ${{ inputs.portainer-swarm-id }}
       portainer-env-json: ${{ inputs.portainer-env-json }}
+      portainer-replace-vars-json: ${{ inputs.portainer-replace-vars-json }}
       portainer-prune: ${{ inputs.portainer-prune }}
       portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
       portainer-prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy }}

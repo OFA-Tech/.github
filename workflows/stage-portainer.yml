@@ -27,6 +27,11 @@ on:
         required: false
         type: string
         default: ""
+      portainer-stack-file-path:
+        description: Path to stack/compose file in repository (alternative to content)
+        required: false
+        type: string
+        default: ""
       portainer-swarm-id:
         description: Swarm cluster ID (required for swarm deploy)
         required: false
@@ -38,7 +43,12 @@ on:
         type: string
         default: ""
       portainer-env-json:
-        description: Optional JSON array of env vars [{"name":"A","value":"B"}]
+        description: Optional JSON array of env vars for Portainer stack environment [{"name":"A","value":"B"}]
+        required: false
+        type: string
+        default: ""
+      portainer-replace-vars-json:
+        description: Optional JSON object for compose file variable interpolation {"VAR":"value"}. Supports ${VAR} and ${VAR:-default}. Takes precedence over environment variables.
         required: false
         type: string
         default: ""
@@ -106,8 +116,10 @@ jobs:
           stack-id: ${{ inputs.portainer-stack-id }}
           stack-name: ${{ inputs.portainer-stack-name }}
           stack-file-content: ${{ inputs.portainer-stack-file-content }}
+          stack-file-path: ${{ inputs.portainer-stack-file-path }}
           swarm-id: ${{ inputs.portainer-swarm-id }}
           env-json: ${{ inputs.portainer-env-json }}
+          replace-vars-json: ${{ inputs.portainer-replace-vars-json }}
           prune: ${{ inputs.portainer-prune && 'true' || 'false' }}
           repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy && 'true' || 'false' }}
           prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy && 'true' || 'false' }}
