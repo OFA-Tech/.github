@@ -21,12 +21,12 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-      registry:
+      docker-registry:
         description: Container registry host
         required: false
         type: string
         default: docker.io
-      image-name:
+      docker-image-name:
         description: Optional image name override
         required: false
         type: string
@@ -36,17 +36,17 @@ on:
         required: false
         type: string
         default: Dockerfile
-      context:
+      docker-context:
         description: Docker build context
         required: false
         type: string
         default: .
-      version:
+      docker-version:
         description: Optional explicit image version
         required: false
         type: string
         default: ""
-      push-latest:
+      docker-push-latest:
         description: Also push latest tag
         required: false
         type: boolean
@@ -99,11 +99,11 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ env.RESOLVED_DOCKER_USERNAME }}
         with:
-          registry: ${{ inputs.registry }}
-          image-name: ${{ inputs.image-name }}
+          registry: ${{ inputs.docker-registry }}
+          image-name: ${{ inputs.docker-image-name }}
           dockerfile: ${{ inputs.dockerfile }}
-          context: ${{ inputs.context }}
-          version: ${{ inputs.version }}
-          push-latest: ${{ inputs.push-latest && 'true' || 'false' }}
+          context: ${{ inputs.docker-context }}
+          version: ${{ inputs.docker-version }}
+          push-latest: ${{ inputs.docker-push-latest && 'true' || 'false' }}
           username: ${{ env.RESOLVED_DOCKER_USERNAME }}
           password: ${{ env.RESOLVED_DOCKER_PASSWORD }}

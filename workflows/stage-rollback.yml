@@ -13,17 +13,17 @@ on:
         type: string
         default: self-hosted
 
-      host:
+      deploy-host:
         description: Remote host for docker/ssh rollback
         required: false
         type: string
         default: ""
-      port:
+      deploy-port:
         description: SSH port
         required: false
         type: string
         default: "22"
-      username:
+      deploy-username:
         description: SSH username
         required: false
         type: string
@@ -56,7 +56,7 @@ on:
         required: false
         type: string
         default: ""
-      endpoint-id:
+      portainer-endpoint-id:
         description: Portainer endpoint ID override
         required: false
         type: string
@@ -83,7 +83,7 @@ on:
         default: true
 
     secrets:
-      ssh-private-key:
+      deploy-ssh-private-key:
         required: false
       portainer-api-key:
         required: false
@@ -94,13 +94,13 @@ jobs:
     permissions:
       contents: read
     env:
-      RESOLVED_HOST: ${{ inputs.host != '' && inputs.host || vars.DEPLOY_HOST }}
-      RESOLVED_PORT: ${{ inputs.port != '' && inputs.port || vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
-      RESOLVED_USERNAME: ${{ inputs.username != '' && inputs.username || vars.DEPLOY_USERNAME }}
-      RESOLVED_SSH_PRIVATE_KEY: ${{ secrets.ssh-private-key != '' && secrets.ssh-private-key || secrets.DEPLOY_SSH_PRIVATE_KEY }}
-      RESOLVED_PORTAINER_URL: ${{ inputs.portainer-url != '' && inputs.portainer-url || vars.PORTAINER_URL }}
-      RESOLVED_PORTAINER_ENDPOINT_ID: ${{ inputs.endpoint-id != '' && inputs.endpoint-id || vars.PORTAINER_ENDPOINT_ID }}
-      RESOLVED_PORTAINER_API_KEY: ${{ secrets.portainer-api-key != '' && secrets.portainer-api-key || secrets.PORTAINER_API_KEY }}
+      RESOLVED_HOST: ${{ inputs.deploy-host }}
+      RESOLVED_PORT: ${{ inputs.deploy-port }}
+      RESOLVED_USERNAME: ${{ inputs.deploy-username }}
+      RESOLVED_SSH_PRIVATE_KEY: ${{ secrets.deploy-ssh-private-key }}
+      RESOLVED_PORTAINER_URL: ${{ inputs.portainer-url }}
+      RESOLVED_PORTAINER_ENDPOINT_ID: ${{ inputs.portainer-endpoint-id }}
+      RESOLVED_PORTAINER_API_KEY: ${{ secrets.portainer-api-key }}
 
     steps:
       - name: Validate rollback configuration

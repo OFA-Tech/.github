@@ -12,7 +12,7 @@ on:
         required: false
         type: string
         default: ""
-      java-distribution:
+      distribution:
         description: JDK distribution for Java
         required: false
         type: string
@@ -75,10 +75,10 @@ jobs:
       contents: read
 
     env:
-      RESOLVED_SONAR_TOKEN: ${{ secrets.sonar-token != '' && secrets.sonar-token || inputs.sonar-token != '' && inputs.sonar-token || secrets.SONAR_TOKEN }}
-      RESOLVED_SONAR_HOST_URL: ${{ secrets.sonar-host-url != '' && secrets.sonar-host-url || inputs.sonar-host-url != '' && inputs.sonar-host-url || vars.SONAR_HOST_URL }}
-      RESOLVED_SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key != '' && inputs.sonar-project-key || vars.SONAR_PROJECT_KEY }}
-      RESOLVED_SONAR_PROJECT_NAME: ${{ inputs.sonar-project-name != '' && inputs.sonar-project-name || vars.SONAR_PROJECT_NAME }}
+      RESOLVED_SONAR_TOKEN: ${{ secrets.sonar-token }}
+      RESOLVED_SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+      RESOLVED_SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key }}
+      RESOLVED_SONAR_PROJECT_NAME: ${{ inputs.sonar-project-name }}
 
     steps:
       - name: Checkout
@@ -99,14 +99,14 @@ jobs:
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
-          distribution: ${{ inputs.java-distribution }}
+          distribution: ${{ inputs.distribution }}
 
       - name: Setup runtime
         uses: ./actions/setup/runtime
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
-          distribution: ${{ steps.defaults.outputs.distribution }}
+          distribution: ${{ inputs.distribution != '' && inputs.distribution || steps.defaults.outputs.distribution }}
 
       - name: Run custom Sonar command
         if: ${{ inputs.sonar-command != '' }}

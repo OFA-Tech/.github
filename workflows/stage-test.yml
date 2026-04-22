@@ -12,7 +12,7 @@ on:
         required: false
         type: string
         default: ""
-      java-distribution:
+      distribution:
         description: JDK distribution for Java tests
         required: false
         type: string
@@ -49,7 +49,7 @@ jobs:
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
-          distribution: ${{ inputs.java-distribution }}
+          distribution: ${{ inputs.distribution }}
           test-command: ${{ inputs.test-command }}
 
       - name: Setup runtime
@@ -57,7 +57,7 @@ jobs:
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
-          distribution: ${{ steps.defaults.outputs.distribution }}
+          distribution: ${{ inputs.distribution != '' && inputs.distribution || steps.defaults.outputs.distribution }}
 
       - name: Run tests
         uses: ./actions/run-command

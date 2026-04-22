@@ -495,12 +495,12 @@ jobs:
     uses: ./.github/workflows/stage-docker.yml
     with:
       runner: ${{ inputs.runner }}
-      registry: ${{ inputs.docker-registry }}
-      image-name: ${{ inputs.docker-image-name }}
+      docker-registry: ${{ inputs.docker-registry }}
+      docker-image-name: ${{ inputs.docker-image-name }}
       dockerfile: ${{ inputs.dockerfile }}
-      context: ${{ inputs.docker-context }}
-      version: ${{ inputs.docker-version }}
-      push-latest: ${{ inputs.docker-push-latest }}
+      docker-context: ${{ inputs.docker-context }}
+      docker-version: ${{ inputs.docker-version }}
+      docker-push-latest: ${{ inputs.docker-push-latest }}
       docker-username: ${{ inputs.docker-username }}
       docker-password: ${{ inputs.docker-password }}
     secrets:
@@ -512,18 +512,17 @@ jobs:
     needs: [verify, docker]
     uses: ./.github/workflows/stage-portainer.yml
     with:
-      operation: ${{ inputs.portainer-operation }}
-      stack-type: ${{ inputs.portainer-stack-type }}
-      stack-id: ${{ inputs.portainer-stack-id }}
-      stack-name: ${{ inputs.portainer-stack-name }}
-      stack-file-content: ${{ inputs.portainer-stack-file-content }}
-      stack-file-path: ${{ inputs.portainer-stack-file-path }}
-      swarm-id: ${{ inputs.portainer-swarm-id }}
-      env-json: ${{ inputs.portainer-env-json }}
-      prune: ${{ inputs.portainer-prune }}
-      repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
-      prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy }}
-      endpoint-id: ${{ inputs.portainer-endpoint-id }}
+      portainer-operation: ${{ inputs.portainer-operation }}
+      portainer-stack-type: ${{ inputs.portainer-stack-type }}
+      portainer-stack-id: ${{ inputs.portainer-stack-id }}
+      portainer-stack-name: ${{ inputs.portainer-stack-name }}
+      portainer-stack-file-content: ${{ inputs.portainer-stack-file-content }}
+      portainer-swarm-id: ${{ inputs.portainer-swarm-id }}
+      portainer-env-json: ${{ inputs.portainer-env-json }}
+      portainer-prune: ${{ inputs.portainer-prune }}
+      portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
+      portainer-prefer-git-redeploy: ${{ inputs.portainer-prefer-git-redeploy }}
+      portainer-endpoint-id: ${{ inputs.portainer-endpoint-id }}
       portainer-url: ${{ inputs.portainer-url }}
       runner: ${{ inputs.runner }}
     secrets:
@@ -537,14 +536,14 @@ jobs:
       deploy-mode: ${{ inputs.deploy-mode }}
       artifact-name: ${{ inputs.artifact-name }}
       artifact-path: ${{ inputs.artifact-path }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
-      remote-path: ${{ inputs.deploy-remote-path }}
-      source-glob: ${{ inputs.deploy-source-glob }}
-      strip-components: ${{ inputs.deploy-strip-components }}
-      overwrite: ${{ inputs.deploy-overwrite }}
-      clean-remote: ${{ inputs.deploy-clean-remote }}
+      deploy-host: ${{ inputs.deploy-host }}
+      deploy-port: ${{ inputs.deploy-port }}
+      deploy-username: ${{ inputs.deploy-username }}
+      deploy-remote-path: ${{ inputs.deploy-remote-path }}
+      deploy-source-glob: ${{ inputs.deploy-source-glob }}
+      deploy-strip-components: ${{ inputs.deploy-strip-components }}
+      deploy-overwrite: ${{ inputs.deploy-overwrite }}
+      deploy-clean-remote: ${{ inputs.deploy-clean-remote }}
       docker-image: ${{ inputs.deploy-docker-image != '' && inputs.deploy-docker-image || needs.docker.outputs.image-version-tag }}
       docker-compose-file: ${{ inputs.deploy-docker-compose-file }}
       docker-run-command: ${{ inputs.deploy-docker-run-command }}
@@ -555,7 +554,7 @@ jobs:
       docker-password: ${{ inputs.deploy-docker-password }}
       runner: ${{ inputs.runner }}
     secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+      deploy-ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
       docker-password: ${{ secrets.deploy-docker-password }}
       docker-username: ${{ secrets.deploy-docker-username }}
 
@@ -567,17 +566,17 @@ jobs:
       deploy-mode: sftp
       artifact-name: ${{ inputs.artifact-name }}
       artifact-path: ${{ inputs.artifact-path }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
-      remote-path: ${{ inputs.deploy-remote-path }}
-      source-glob: ${{ inputs.deploy-source-glob }}
-      strip-components: ${{ inputs.deploy-strip-components }}
-      overwrite: ${{ inputs.deploy-overwrite }}
-      clean-remote: ${{ inputs.deploy-clean-remote }}
+      deploy-host: ${{ inputs.deploy-host }}
+      deploy-port: ${{ inputs.deploy-port }}
+      deploy-username: ${{ inputs.deploy-username }}
+      deploy-remote-path: ${{ inputs.deploy-remote-path }}
+      deploy-source-glob: ${{ inputs.deploy-source-glob }}
+      deploy-strip-components: ${{ inputs.deploy-strip-components }}
+      deploy-overwrite: ${{ inputs.deploy-overwrite }}
+      deploy-clean-remote: ${{ inputs.deploy-clean-remote }}
       runner: ${{ inputs.runner }}
     secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+      deploy-ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
 
   post-deploy:
     if: ${{ always() && inputs.run-post-deploy-tests && (needs.deploy-portainer.result == 'success' || needs.deploy-docker.result == 'success' || needs.deploy-ssh-artifact.result == 'success') }}
@@ -605,19 +604,19 @@ jobs:
     with:
       strategy: ${{ inputs.deploy-strategy }}
       runner: ${{ inputs.runner }}
-      host: ${{ inputs.deploy-host }}
-      port: ${{ inputs.deploy-port }}
-      username: ${{ inputs.deploy-username }}
+      deploy-host: ${{ inputs.deploy-host }}
+      deploy-port: ${{ inputs.deploy-port }}
+      deploy-username: ${{ inputs.deploy-username }}
       ssh-rollback-command: ${{ inputs.ssh-rollback-command }}
       docker-mode: ${{ inputs.deploy-mode == 'docker-swarm' && 'swarm' || 'standalone' }}
       docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
       docker-rollback-command: ${{ inputs.docker-rollback-command != '' && inputs.docker-rollback-command || inputs.deploy-docker-run-command }}
       portainer-url: ${{ inputs.portainer-url }}
-      endpoint-id: ${{ inputs.portainer-endpoint-id }}
+      portainer-endpoint-id: ${{ inputs.portainer-endpoint-id }}
       portainer-stack-id: ${{ inputs.portainer-stack-id }}
       portainer-rollback-to: ${{ inputs.portainer-rollback-to }}
       portainer-prune: ${{ inputs.portainer-prune }}
       portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
     secrets:
-      ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
+      deploy-ssh-private-key: ${{ secrets.deploy-ssh-private-key != '' && secrets.deploy-ssh-private-key || inputs.deploy-ssh-private-key }}
       portainer-api-key: ${{ secrets.portainer-api-key }}

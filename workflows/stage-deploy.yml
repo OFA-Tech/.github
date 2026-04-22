@@ -17,22 +17,22 @@ on:
         required: false
         type: string
         default: ./artifact
-      host:
+      deploy-host:
         description: Destination host
         required: false
         type: string
         default: ""
-      port:
+      deploy-port:
         description: SSH port
         required: false
         type: string
         default: "22"
-      username:
+      deploy-username:
         description: SSH username
         required: false
         type: string
         default: ""
-      remote-path:
+      deploy-remote-path:
         description: Destination path on server
         required: false
         type: string
@@ -77,22 +77,22 @@ on:
         required: false
         type: string
         default: ""
-      source-glob:
+      deploy-source-glob:
         description: Files to upload relative to artifact-path
         required: false
         type: string
         default: "**/*"
-      strip-components:
+      deploy-strip-components:
         description: Number of path components to strip
         required: false
         type: string
         default: "0"
-      overwrite:
+      deploy-overwrite:
         description: Overwrite files on destination
         required: false
         type: boolean
         default: true
-      clean-remote:
+      deploy-clean-remote:
         description: Remove remote path before upload
         required: false
         type: boolean
@@ -103,7 +103,7 @@ on:
         type: string
         default: ubuntu-latest
     secrets:
-      ssh-private-key:
+      deploy-ssh-private-key:
         required: false
       docker-password:
         required: false
@@ -117,11 +117,11 @@ jobs:
       contents: read
     env:
       RESOLVED_DEPLOY_MODE: ${{ inputs.deploy-mode }}
-      RESOLVED_DEPLOY_HOST: ${{ inputs.host != '' && inputs.host || vars.DEPLOY_HOST }}
-      RESOLVED_DEPLOY_PORT: ${{ inputs.port != '' && inputs.port || vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
-      RESOLVED_DEPLOY_USERNAME: ${{ inputs.username != '' && inputs.username || vars.DEPLOY_USERNAME }}
-      RESOLVED_DEPLOY_REMOTE_PATH: ${{ inputs.remote-path != '' && inputs.remote-path || vars.DEPLOY_REMOTE_PATH }}
-      RESOLVED_SSH_PRIVATE_KEY: ${{ secrets.ssh-private-key != '' && secrets.ssh-private-key || secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      RESOLVED_DEPLOY_HOST: ${{ inputs.deploy-host }}
+      RESOLVED_DEPLOY_PORT: ${{ inputs.deploy-port }}
+      RESOLVED_DEPLOY_USERNAME: ${{ inputs.deploy-username }}
+      RESOLVED_DEPLOY_REMOTE_PATH: ${{ inputs.deploy-remote-path }}
+      RESOLVED_SSH_PRIVATE_KEY: ${{ secrets.deploy-ssh-private-key }}
       RESOLVED_DOCKER_USERNAME: ${{ inputs.docker-username != '' && inputs.docker-username || secrets.docker-username != '' && secrets.docker-username || vars.DOCKER_USERNAME }}
       RESOLVED_DOCKER_PASSWORD: ${{ inputs.docker-password != '' && inputs.docker-password || secrets.docker-password != '' && secrets.docker-password || secrets.DOCKERHUB_TOKEN }}
 
@@ -147,11 +147,11 @@ jobs:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
           username: ${{ env.RESOLVED_DEPLOY_USERNAME }}
-          source: ${{ inputs.artifact-path }}/${{ inputs.source-glob }}
+          source: ${{ inputs.artifact-path }}/${{ inputs.deploy-source-glob }}
           target: ${{ env.RESOLVED_DEPLOY_REMOTE_PATH }}
-          strip-components: ${{ inputs.strip-components }}
-          overwrite: ${{ inputs.overwrite }}
-          clean-remote: ${{ inputs.clean-remote }}
+          strip-components: ${{ inputs.deploy-strip-components }}
+          overwrite: ${{ inputs.deploy-overwrite }}
+          clean-remote: ${{ inputs.deploy-clean-remote }}
           ssh-private-key: ${{ env.RESOLVED_SSH_PRIVATE_KEY }}
 
       - name: Validate docker-compose deploy configuration
