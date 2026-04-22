@@ -1,0 +1,93 @@
+name: Portainer Stack Inspect
+description: Inspect a stack and expose key metadata/JSON for downstream workflow steps.
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key
+    required: true
+  stack-id:
+    description: Stack ID to inspect
+    required: true
+
+outputs:
+  stack-id:
+    description: Stack ID
+    value: ${{ steps.run.outputs.stack-id }}
+  stack-name:
+    description: Stack name
+    value: ${{ steps.run.outputs.stack-name }}
+  endpoint-id:
+    description: Endpoint ID associated with the stack
+    value: ${{ steps.run.outputs.endpoint-id }}
+  stack-type-resolved:
+    description: swarm | standalone | unknown
+    value: ${{ steps.run.outputs.stack-type-resolved }}
+  stack-json:
+    description: Full stack JSON (single-line)
+    value: ${{ steps.run.outputs.stack-json }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Inspect stack
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        STACK_ID="${{ inputs.stack-id }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        resolve_stack_type() {
+          local stack_json="$1"
+          local type_value
+          local swarm_id
+
+          type_value="$(jq -r '.Type // empty' <<<"$stack_json")"
+          swarm_id="$(jq -r '.SwarmID // empty' <<<"$stack_json")"
+
+          if [[ -n "$swarm_id" ]] || [[ "$type_value" == "1" ]]; then
+            printf '%s' "swarm"
+            return
+          fi
+
+          if [[ "$type_value" == "2" ]]; then
+            printf '%s' "standalone"
+            return
+          fi
+
+          printf '%s' "unknown"
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        STACK_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/stacks/${STACK_ID}")"
+
+        OUT_ID="$(jq -r '.Id // .ID // empty' <<<"$STACK_JSON")"
+        OUT_NAME="$(jq -r '.Name // empty' <<<"$STACK_JSON")"
+        OUT_ENDPOINT_ID="$(jq -r '.EndpointId // .EndpointID // empty' <<<"$STACK_JSON")"
+        OUT_TYPE="$(resolve_stack_type "$STACK_JSON")"
+        OUT_JSON_SINGLE_LINE="$(jq -c '.' <<<"$STACK_JSON")"
+
+        {
+          echo "stack-id=${OUT_ID}"
+          echo "stack-name=${OUT_NAME}"
+          echo "endpoint-id=${OUT_ENDPOINT_ID}"
+          echo "stack-type-resolved=${OUT_TYPE}"
+          echo "stack-json=${OUT_JSON_SINGLE_LINE}"
+        } >> "$GITHUB_OUTPUT"

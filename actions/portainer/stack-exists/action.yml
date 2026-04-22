@@ -1,0 +1,150 @@
+name: Portainer Stack Exists
+description: Check if a stack exists by stack ID or by stack name in a specific endpoint.
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key
+    required: true
+  endpoint-id:
+    description: Portainer endpoint ID used for name-based lookups
+    required: false
+    default: ""
+  stack-id:
+    description: Optional stack ID to check directly
+    required: false
+    default: ""
+  stack-name:
+    description: Optional stack name to check
+    required: false
+    default: ""
+  stack-type:
+    description: Optional expected type (swarm or standalone)
+    required: false
+    default: ""
+  fail-if-missing:
+    description: Fail the action when no matching stack is found
+    required: false
+    default: "false"
+
+outputs:
+  exists:
+    description: true when a matching stack is found
+    value: ${{ steps.run.outputs.exists }}
+  stack-id:
+    description: Matching stack ID when found
+    value: ${{ steps.run.outputs.stack-id }}
+  stack-name:
+    description: Matching stack name when found
+    value: ${{ steps.run.outputs.stack-name }}
+  stack-type-resolved:
+    description: swarm | standalone | unknown
+    value: ${{ steps.run.outputs.stack-type-resolved }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Check stack existence
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        ENDPOINT_ID="${{ inputs.endpoint-id }}"
+        STACK_ID="${{ inputs.stack-id }}"
+        STACK_NAME="${{ inputs.stack-name }}"
+        EXPECTED_STACK_TYPE="${{ inputs.stack-type }}"
+        FAIL_IF_MISSING="${{ inputs.fail-if-missing }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        is_true() {
+          case "${1:-}" in
+            true|TRUE|1|yes|YES|on|ON) return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+
+        resolve_stack_type() {
+          local stack_json="$1"
+          local type_value
+          local swarm_id
+
+          type_value="$(jq -r '.Type // empty' <<<"$stack_json")"
+          swarm_id="$(jq -r '.SwarmID // empty' <<<"$stack_json")"
+
+          if [[ -n "$swarm_id" ]] || [[ "$type_value" == "1" ]]; then
+            printf '%s' "swarm"
+            return
+          fi
+
+          if [[ "$type_value" == "2" ]]; then
+            printf '%s' "standalone"
+            return
+          fi
+
+          printf '%s' "unknown"
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        [[ -n "$STACK_ID" || -n "$STACK_NAME" ]] || fail "Provide stack-id or stack-name"
+
+        FOUND_JSON=""
+
+        if [[ -n "$STACK_ID" ]]; then
+          if FOUND_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/stacks/${STACK_ID}" 2>/dev/null)"; then
+            :
+          else
+            FOUND_JSON=""
+          fi
+        else
+          STACKS_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/stacks")"
+          FOUND_JSON="$(jq -c \
+            --arg name "$STACK_NAME" \
+            --arg endpoint "$ENDPOINT_ID" '
+            map(select((.Name == $name) and ($endpoint == "" or ((.EndpointId // .EndpointID // "") | tostring == $endpoint))))
+            | first // empty
+          ' <<<"$STACKS_JSON")"
+        fi
+
+        if [[ -z "$FOUND_JSON" ]]; then
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "stack-id=" >> "$GITHUB_OUTPUT"
+          echo "stack-name=" >> "$GITHUB_OUTPUT"
+          echo "stack-type-resolved=unknown" >> "$GITHUB_OUTPUT"
+
+          if is_true "$FAIL_IF_MISSING"; then
+            fail "Stack not found"
+          fi
+
+          exit 0
+        fi
+
+        RESOLVED_TYPE="$(resolve_stack_type "$FOUND_JSON")"
+        if [[ -n "$EXPECTED_STACK_TYPE" && "$EXPECTED_STACK_TYPE" != "$RESOLVED_TYPE" ]]; then
+          fail "Stack found but type mismatch. Expected ${EXPECTED_STACK_TYPE}, got ${RESOLVED_TYPE}"
+        fi
+
+        OUT_ID="$(jq -r '.Id // .ID // empty' <<<"$FOUND_JSON")"
+        OUT_NAME="$(jq -r '.Name // empty' <<<"$FOUND_JSON")"
+
+        {
+          echo "exists=true"
+          echo "stack-id=${OUT_ID}"
+          echo "stack-name=${OUT_NAME}"
+          echo "stack-type-resolved=${RESOLVED_TYPE}"
+        } >> "$GITHUB_OUTPUT"

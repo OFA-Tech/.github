@@ -1,0 +1,91 @@
+name: Portainer Status
+description: Check Portainer API health and optionally inspect endpoint runtime mode (swarm or standalone).
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key (required when endpoint-id is provided)
+    required: false
+    default: ""
+  endpoint-id:
+    description: Optional Portainer endpoint ID for runtime checks
+    required: false
+    default: ""
+
+outputs:
+  portainer-up:
+    description: true when /api/system/status responds successfully
+    value: ${{ steps.run.outputs.portainer-up }}
+  portainer-version:
+    description: Portainer version when available
+    value: ${{ steps.run.outputs.portainer-version }}
+  endpoint-runtime-mode:
+    description: swarm | standalone | unknown
+    value: ${{ steps.run.outputs.endpoint-runtime-mode }}
+  endpoint-swarm-id:
+    description: Swarm ID when runtime mode is swarm
+    value: ${{ steps.run.outputs.endpoint-swarm-id }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Check Portainer status
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        ENDPOINT_ID="${{ inputs.endpoint-id }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        STATUS_URL="${PORTAINER_URL}/api/system/status"
+        STATUS_JSON="$(curl -fsSL "$STATUS_URL")"
+        VERSION="$(jq -r '.Version // empty' <<<"$STATUS_JSON")"
+
+        {
+          echo "portainer-up=true"
+          echo "portainer-version=${VERSION}"
+          echo "endpoint-runtime-mode=unknown"
+          echo "endpoint-swarm-id="
+        } >> "$GITHUB_OUTPUT"
+
+        if [[ -z "$ENDPOINT_ID" ]]; then
+          exit 0
+        fi
+
+        [[ -n "$API_KEY" ]] || fail "api-key is required when endpoint-id is provided"
+
+        INFO_JSON="$(curl -fsSL \
+          -H "X-API-Key: ${API_KEY}" \
+          "${PORTAINER_URL}/api/endpoints/${ENDPOINT_ID}/docker/info")"
+
+        SWARM_STATE="$(jq -r '.Swarm.LocalNodeState // "inactive"' <<<"$INFO_JSON")"
+        SWARM_ID="$(jq -r '.Swarm.Cluster.ID // empty' <<<"$INFO_JSON")"
+
+        if [[ "$SWARM_STATE" == "active" ]]; then
+          MODE="swarm"
+        else
+          MODE="standalone"
+          SWARM_ID=""
+        fi
+
+        {
+          echo "endpoint-runtime-mode=${MODE}"
+          echo "endpoint-swarm-id=${SWARM_ID}"
+        } >> "$GITHUB_OUTPUT"

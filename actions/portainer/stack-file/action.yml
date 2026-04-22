@@ -1,0 +1,71 @@
+name: Portainer Stack File
+description: Retrieve a stack file content (latest or a specific version).
+
+inputs:
+  portainer-url:
+    description: Portainer base URL, for example https://portainer.example.com
+    required: true
+  api-key:
+    description: Portainer API key
+    required: true
+  stack-id:
+    description: Stack ID
+    required: true
+  version:
+    description: Optional stack file version
+    required: false
+    default: ""
+
+outputs:
+  stack-file-content:
+    description: Stack file content
+    value: ${{ steps.run.outputs.stack-file-content }}
+  requested-version:
+    description: Version value used for request (empty means latest)
+    value: ${{ steps.run.outputs.requested-version }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Get stack file
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PORTAINER_URL="${{ inputs.portainer-url }}"
+        PORTAINER_URL="${PORTAINER_URL%/}"
+        API_KEY="${{ inputs.api-key }}"
+        STACK_ID="${{ inputs.stack-id }}"
+        VERSION="${{ inputs.version }}"
+
+        fail() {
+          echo "$1" >&2
+          exit 1
+        }
+
+        require_cmd() {
+          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+        }
+
+        require_cmd curl
+        require_cmd jq
+
+        URL="${PORTAINER_URL}/api/stacks/${STACK_ID}/file"
+        if [[ -n "$VERSION" ]]; then
+          URL="${URL}?version=${VERSION}"
+        fi
+
+        FILE_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "$URL")"
+        STACK_FILE_CONTENT="$(jq -r '.StackFileContent // empty' <<<"$FILE_JSON")"
+
+        if [[ -z "$STACK_FILE_CONTENT" ]]; then
+          fail "Stack file content is empty or missing in response"
+        fi
+
+        {
+          echo "requested-version=${VERSION}"
+          echo "stack-file-content<<EOF"
+          echo "$STACK_FILE_CONTENT"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
