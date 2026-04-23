@@ -48,13 +48,13 @@ on:
         description: Enables test stages
         required: false
         type: boolean
-        default: true
+        default: false
 
       run-unit-tests:
         description: Enables unit tests
         required: false
         type: boolean
-        default: true
+        default: false
 
       unit-test-command:
         description: Optional unit test command override
@@ -186,7 +186,7 @@ on:
         description: Also push latest tag
         required: false
         type: boolean
-        default: true
+        default: false
 
       run-deploy:
         description: Enables deploy stage
@@ -360,7 +360,7 @@ on:
         description: Prefer git redeploy for Portainer git stacks
         required: false
         type: boolean
-        default: true
+        default: false
 
       portainer-endpoint-id:
         description: Portainer endpoint ID
@@ -384,13 +384,13 @@ on:
         description: Enables post-deploy tests
         required: false
         type: boolean
-        default: true
+        default: false
 
       run-health-check:
         description: Run deployment health checks
         required: false
         type: boolean
-        default: true
+        default: false
 
       health-check-url:
         description: URL for health checks
