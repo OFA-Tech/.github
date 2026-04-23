@@ -674,18 +674,20 @@ jobs:
     uses: ./.github/workflows/stage-rollback.yml
     with:
       runner: ${{ inputs.runner }}
-      deploy-strategy: ${{ inputs.deploy-strategy }}
-      deploy-mode: ${{ inputs.deploy-mode }}
+      strategy: ${{ inputs.deploy-strategy }}
+      docker-mode: ${{ inputs.deploy-mode == 'docker-swarm' && 'swarm' || 'standalone' }}
       deploy-host: ${{ inputs.deploy-host }}
       deploy-port: ${{ inputs.deploy-port }}
       deploy-username: ${{ inputs.deploy-username }}
-      deploy-remote-path: ${{ inputs.deploy-remote-path }}
+      docker-swarm-service-name: ${{ inputs.deploy-docker-swarm-service-name }}
       docker-rollback-command: ${{ inputs.docker-rollback-command }}
       ssh-rollback-command: ${{ inputs.ssh-rollback-command }}
       portainer-stack-id: ${{ inputs.portainer-stack-id }}
       portainer-endpoint-id: ${{ inputs.portainer-endpoint-id }}
       portainer-url: ${{ inputs.portainer-url }}
       portainer-rollback-to: ${{ inputs.portainer-rollback-to }}
+      portainer-prune: ${{ inputs.portainer-prune }}
+      portainer-repull-image-and-redeploy: ${{ inputs.portainer-repull-image-and-redeploy }}
     secrets:
       deploy-ssh-private-key: ${{ secrets.deploy-ssh-private-key }}
       portainer-api-key: ${{ secrets.portainer-api-key }}
