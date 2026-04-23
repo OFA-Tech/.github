@@ -11,6 +11,9 @@ on:
 
 jobs:
   pipeline:
+    permissions:
+      contents: write
+      packages: write
     uses: OFA-Tech/.github/.github/workflows/ci-cd.yml@v1
     with:
       language: node
