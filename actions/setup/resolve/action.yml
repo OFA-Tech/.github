@@ -44,7 +44,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        source "$GITHUB_ACTION_PATH/../../scripts/common/action-common.sh"
+        source "$GITHUB_ACTION_PATH/../../../scripts/common/action-common.sh"
 
         language_raw="${{ inputs.language }}"
         language="$(common_to_lower "$language_raw")"
