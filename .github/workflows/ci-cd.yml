@@ -531,6 +531,9 @@ jobs:
     if: ${{ inputs.run-docker-image && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
     needs: [verify]
     uses: ./.github/workflows/stage-docker.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       runner: ${{ inputs.runner }}
       docker-registry: ${{ inputs.docker-registry }}
