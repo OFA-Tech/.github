@@ -95,7 +95,7 @@ jobs:
 
       - name: Build and push docker image
         id: docker
-        uses: OFA-TECH/.github/actions/docker/upload@main
+        uses: OFA-TECH/.github/actions/docker/image@main
         env:
           DOCKER_USERNAME: ${{ env.RESOLVED_DOCKER_USERNAME }}
         with:
