@@ -16,7 +16,7 @@ Provide production-grade, reusable CI/CD building blocks that can be consumed by
 
 ## Reusable Workflows
 
-- `.github/workflows/ci-build.yml`: Central orchestration workflow (build, test, sonar, deploy).
+- `.github/workflows/ci-cd.yml`: Central orchestration workflow (build, test, sonar, image, deploy).
 - `.github/workflows/stage-build.yml`: Build stage.
 - `.github/workflows/stage-test.yml`: Test stage.
 - `.github/workflows/stage-sonar.yml`: SonarQube code quality stage.
@@ -42,7 +42,7 @@ on:
 
 jobs:
   pipeline:
-    uses: OFA-Tech/.github/.github/workflows/ci-build.yml@v1
+    uses: OFA-Tech/.github/.github/workflows/ci-cd.yml@v1
     with:
       language: dotnet
       language-version: '8.0'

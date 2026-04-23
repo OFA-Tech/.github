@@ -1,4 +1,9 @@
 {
-  "name": "OFA-Tech CI/CD Core",
-  "description": "Reusable CI/CD workflow template for build, test, SonarQube, container image, and deploy stages."
+  "name": "OFA-Tech CI/CD",
+  "description": "Standard OFA-Tech CI/CD workflow that calls the central reusable pipeline.",
+  "iconName": "actions",
+  "categories": [
+    "Continuous integration",
+    "Deployment"
+  ]
 }
