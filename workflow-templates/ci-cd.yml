@@ -606,7 +606,6 @@ jobs:
   rollback:
     if: ${{ always() && inputs.run-rollback && ((inputs.auto-rollback && needs.post-deploy.result == 'failure') || inputs.manual-rollback) }}
     needs: [deploy-portainer, deploy-docker, deploy-ssh-artifact, post-deploy]
-    environment: rollback
     uses: ./.github/workflows/stage-rollback.yml
     with:
       strategy: ${{ inputs.deploy-strategy }}

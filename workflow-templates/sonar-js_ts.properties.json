@@ -1,0 +1,4 @@
+{
+  "name": "SonarQube JavaScript and TypeScript",
+  "description": "Reusable workflow template for running SonarQube analysis on JavaScript and TypeScript projects."
+}

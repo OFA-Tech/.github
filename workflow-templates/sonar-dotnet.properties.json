@@ -1,0 +1,4 @@
+{
+  "name": "SonarQube .NET",
+  "description": "Reusable workflow template for running SonarQube analysis on .NET projects."
+}

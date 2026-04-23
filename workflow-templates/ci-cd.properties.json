@@ -1,0 +1,4 @@
+{
+  "name": "OFA-Tech CI/CD Core",
+  "description": "Reusable CI/CD workflow template for build, test, SonarQube, container image, and deploy stages."
+}

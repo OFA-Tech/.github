@@ -1,0 +1,4 @@
+{
+  "name": "SonarQube Maven",
+  "description": "Reusable workflow template for running SonarQube analysis on Maven projects."
+}
