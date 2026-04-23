@@ -76,7 +76,7 @@ jobs:
 
       - name: Health check with custom command
         if: ${{ inputs.run-health-check && inputs.health-check-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.health-check-command }}
           working-directory: ${{ inputs.working-directory }}
@@ -113,7 +113,7 @@ jobs:
 
       - name: Run load tests
         if: ${{ inputs.run-load-test && inputs.load-test-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.load-test-command }}
           working-directory: ${{ inputs.working-directory }}
@@ -126,7 +126,7 @@ jobs:
 
       - name: Run contract tests
         if: ${{ inputs.run-contract-test && inputs.contract-test-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.contract-test-command }}
           working-directory: ${{ inputs.working-directory }}

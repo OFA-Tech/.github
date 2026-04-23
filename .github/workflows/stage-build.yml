@@ -60,7 +60,7 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: ./actions/setup/resolve
+        uses: OFA-Tech/.github/actions/setup/resolve@main
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -68,14 +68,14 @@ jobs:
           build-command: ${{ inputs.build-command }}
 
       - name: Setup runtime
-        uses: ./actions/setup/runtime
+        uses: OFA-Tech/.github/actions/setup/runtime@main
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
           distribution: ${{ steps.defaults.outputs.distribution }}
 
       - name: Build
-        uses: ./actions/run-command
+        uses: OFA-Tech/.github/actions/run-command@main
         with:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}

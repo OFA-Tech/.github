@@ -106,7 +106,7 @@ jobs:
 
       - name: Run Portainer operation
         if: ${{ inputs.portainer-operation == 'deploy' || inputs.portainer-operation == 'update' }}
-        uses: ./actions/portainer/deploy-update
+        uses: OFA-TECH/.github/actions/portainer/deploy-update@main
         with:
           portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
           api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
@@ -126,7 +126,7 @@ jobs:
 
       - name: Rollback Portainer stack
         if: ${{ inputs.portainer-operation == 'rollback' }}
-        uses: ./actions/portainer/rollback
+        uses: OFA-TECH/.github/actions/portainer/rollback@main
         with:
           portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
           api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
@@ -138,7 +138,7 @@ jobs:
 
       - name: Scale Portainer stack
         if: ${{ inputs.portainer-operation == 'scale' }}
-        uses: ./actions/portainer/scale
+        uses: OFA-TECH/.github/actions/portainer/scale@main
         with:
           portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
           api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}

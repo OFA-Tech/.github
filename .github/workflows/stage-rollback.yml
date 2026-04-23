@@ -139,7 +139,7 @@ jobs:
 
       - name: Rollback Portainer stack
         if: ${{ inputs.strategy == 'portainer' }}
-        uses: ./actions/portainer/rollback
+        uses: OFA-TECH/.github/actions/portainer/rollback@main
         with:
           portainer-url: ${{ env.RESOLVED_PORTAINER_URL }}
           api-key: ${{ env.RESOLVED_PORTAINER_API_KEY }}
@@ -151,7 +151,7 @@ jobs:
 
       - name: Rollback Docker Swarm service
         if: ${{ inputs.strategy == 'docker' && inputs.docker-mode == 'swarm' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_HOST }}
           port: ${{ env.RESOLVED_PORT }}
@@ -163,7 +163,7 @@ jobs:
 
       - name: Rollback Docker standalone
         if: ${{ inputs.strategy == 'docker' && inputs.docker-mode == 'standalone' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_HOST }}
           port: ${{ env.RESOLVED_PORT }}
@@ -175,7 +175,7 @@ jobs:
 
       - name: Rollback via SSH command
         if: ${{ inputs.strategy == 'ssh-artifact' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_HOST }}
           port: ${{ env.RESOLVED_PORT }}

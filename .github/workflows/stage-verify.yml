@@ -157,7 +157,7 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: ./actions/setup/resolve
+        uses: OFA-TECH/.github/actions/setup/resolve@main
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -166,7 +166,7 @@ jobs:
           test-command: ${{ inputs.test-command }}
 
       - name: Setup runtime
-        uses: ./actions/setup/runtime
+        uses: OFA-TECH/.github/actions/setup/runtime@main
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
@@ -174,28 +174,28 @@ jobs:
 
       - name: Build
         if: ${{ inputs.run-build && steps.defaults.outputs.build-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run unit tests
         if: ${{ inputs.run-tests && inputs.run-unit-tests && (inputs.unit-test-command != '' || steps.defaults.outputs.test-command != '') }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.unit-test-command != '' && inputs.unit-test-command || steps.defaults.outputs.test-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run integration tests
         if: ${{ inputs.run-tests && inputs.run-integration-tests && inputs.integration-test-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.integration-test-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run mutation tests
         if: ${{ inputs.run-tests && inputs.run-mutation-tests && inputs.mutation-test-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.mutation-test-command }}
           working-directory: ${{ inputs.working-directory }}
@@ -209,7 +209,7 @@ jobs:
 
       - name: Run custom Sonar command
         if: ${{ inputs.run-sonar && inputs.sonar-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.sonar-command }}
           working-directory: ${{ inputs.working-directory }}

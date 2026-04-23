@@ -142,7 +142,7 @@ jobs:
 
       - name: Upload to SFTP
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'sftp' }}
-        uses: ./actions/ssh/upload
+        uses: OFA-TECH/.github/actions/ssh/upload@main
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -163,7 +163,7 @@ jobs:
 
       - name: Deploy with docker compose
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-compose' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -193,7 +193,7 @@ jobs:
 
       - name: Deploy with docker run
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-run' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}
@@ -209,7 +209,7 @@ jobs:
 
       - name: Deploy with docker swarm service
         if: ${{ env.RESOLVED_DEPLOY_MODE == 'docker-swarm' }}
-        uses: ./actions/ssh/command
+        uses: OFA-TECH/.github/actions/ssh/command@main
         with:
           host: ${{ env.RESOLVED_DEPLOY_HOST }}
           port: ${{ env.RESOLVED_DEPLOY_PORT }}

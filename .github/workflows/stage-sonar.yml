@@ -95,14 +95,14 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: ./actions/setup/resolve
+        uses: OFA-TECH/.github/actions/setup/resolve@main
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
           distribution: ${{ inputs.distribution }}
 
       - name: Setup runtime
-        uses: ./actions/setup/runtime
+        uses: OFA-TECH/.github/actions/setup/runtime@main
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Run custom Sonar command
         if: ${{ inputs.sonar-command != '' }}
-        uses: ./actions/run-command
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ inputs.sonar-command }}
           working-directory: ${{ inputs.working-directory }}
