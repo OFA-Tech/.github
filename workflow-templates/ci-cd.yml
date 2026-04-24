@@ -46,7 +46,9 @@ jobs:
 
       run-docker-image: false
       docker-registry: docker.io
+      docker-account: ""
       docker-image-name: ""
+      docker-environment: ""
       dockerfile: Dockerfile
       docker-context: "."
       docker-version: ""

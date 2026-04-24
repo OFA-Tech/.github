@@ -26,8 +26,18 @@ on:
         required: false
         type: string
         default: docker.io
+      docker-account:
+        description: Docker account/namespace override
+        required: false
+        type: string
+        default: ""
       docker-image-name:
-        description: Optional image name override
+        description: Optional image repository name override (repository only)
+        required: false
+        type: string
+        default: ""
+      docker-environment:
+        description: Build environment for version prefix (development, staging, production)
         required: false
         type: string
         default: ""
@@ -66,6 +76,10 @@ on:
         required: false
       docker-username:
         required: false
+      docker-account:
+        required: false
+      docker-image-name:
+        required: false
 
 jobs:
   docker:
@@ -81,26 +95,34 @@ jobs:
     env:
       RESOLVED_DOCKER_USERNAME: ${{ inputs.docker-username != '' && inputs.docker-username || secrets.docker-username != '' && secrets.docker-username || vars.DOCKER_USERNAME }}
       RESOLVED_DOCKER_PASSWORD: ${{ inputs.docker-password != '' && inputs.docker-password || secrets.docker-password != '' && secrets.docker-password || secrets.DOCKERHUB_TOKEN }}
+      RESOLVED_DOCKER_ACCOUNT: ${{ inputs.docker-account != '' && inputs.docker-account || secrets.docker-account != '' && secrets.docker-account || vars.DOCKER_ACCOUNT != '' && vars.DOCKER_ACCOUNT || 'ofa-tech' }}
+      RESOLVED_DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name != '' && inputs.docker-image-name || secrets.docker-image-name != '' && secrets.docker-image-name || vars.DOCKER_IMAGE_NAME }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Validate docker credentials
-        if: ${{ env.RESOLVED_DOCKER_PASSWORD == '' }}
+        if: ${{ env.RESOLVED_DOCKER_USERNAME == '' || env.RESOLVED_DOCKER_PASSWORD == '' }}
         shell: bash
         run: |
-          echo "Missing Docker password/token. Provide inputs.docker-password or secrets.docker-password or secrets.DOCKERHUB_TOKEN." >&2
+          echo "Missing Docker Hub credentials. Provide both username and token/password via inputs, secrets, or repository variables." >&2
+          echo "Username sources: inputs.docker-username, secrets.docker-username, vars.DOCKER_USERNAME" >&2
+          echo "Token sources: inputs.docker-password, secrets.docker-password, secrets.DOCKERHUB_TOKEN" >&2
           exit 1
 
       - name: Build and push docker image
         id: docker
-        uses: OFA-TECH/.github/actions/docker/image@main
+        uses: ./actions/docker/image
         env:
           DOCKER_USERNAME: ${{ env.RESOLVED_DOCKER_USERNAME }}
+          DOCKER_ACCOUNT: ${{ env.RESOLVED_DOCKER_ACCOUNT }}
+          DOCKER_IMAGE_NAME: ${{ env.RESOLVED_DOCKER_IMAGE_NAME }}
         with:
           registry: ${{ inputs.docker-registry }}
-          image-name: ${{ inputs.docker-image-name }}
+          account: ${{ env.RESOLVED_DOCKER_ACCOUNT }}
+          docker-image-name: ${{ env.RESOLVED_DOCKER_IMAGE_NAME }}
+          environment: ${{ inputs.docker-environment }}
           dockerfile: ${{ inputs.dockerfile }}
           context: ${{ inputs.docker-context }}
           version: ${{ inputs.docker-version }}

@@ -4,9 +4,21 @@ inputs:
   registry:
     description: Docker registry host
     required: false
-    default: ghcr.io
+    default: docker.io
+  account:
+    description: Docker account/namespace override
+    required: false
+    default: ""
   image-name:
-    description: Optional image name override
+    description: Optional full image repository override
+    required: false
+    default: ""
+  docker-image-name:
+    description: Docker image repository name override (repository only)
+    required: false
+    default: ""
+  environment:
+    description: Build environment (development, staging, production)
     required: false
     default: ""
   dockerfile:
@@ -33,6 +45,12 @@ inputs:
     required: false
     default: "true"
 outputs:
+  account:
+    description: Resolved docker account/namespace
+    value: ${{ steps.image.outputs.account }}
+  image-name:
+    description: Resolved docker image repository name
+    value: ${{ steps.image.outputs.image-name }}
   image:
     description: Resolved image repository name
     value: ${{ steps.image.outputs.image }}
@@ -53,7 +71,10 @@ runs:
       uses: ./actions/docker/image
       with:
         registry: ${{ inputs.registry }}
+        account: ${{ inputs.account }}
         image-name: ${{ inputs.image-name }}
+        docker-image-name: ${{ inputs.docker-image-name }}
+        environment: ${{ inputs.environment }}
         dockerfile: ${{ inputs.dockerfile }}
         context: ${{ inputs.context }}
         username: ${{ inputs.username }}

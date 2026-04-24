@@ -158,8 +158,20 @@ on:
         type: string
         default: "docker.io"
 
+      docker-account:
+        description: Docker account/namespace
+        required: false
+        type: string
+        default: ""
+
       docker-image-name:
-        description: Docker image name
+        description: Docker image repository name (repository only)
+        required: false
+        type: string
+        default: ""
+
+      docker-environment:
+        description: Build environment for docker tag prefix (development, staging, production)
         required: false
         type: string
         default: ""
@@ -485,6 +497,10 @@ on:
         required: false
       docker-password:
         required: false
+      docker-account:
+        required: false
+      docker-image-name:
+        required: false
       deploy-ssh-private-key:
         required: false
       deploy-docker-username:
@@ -537,7 +553,9 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       docker-registry: ${{ inputs.docker-registry }}
+      docker-account: ${{ inputs.docker-account }}
       docker-image-name: ${{ inputs.docker-image-name }}
+      docker-environment: ${{ inputs.docker-environment }}
       dockerfile: ${{ inputs.dockerfile }}
       docker-context: ${{ inputs.docker-context }}
       docker-version: ${{ inputs.docker-version }}
@@ -545,6 +563,8 @@ jobs:
     secrets:
       docker-username: ${{ secrets.docker-username }}
       docker-password: ${{ secrets.docker-password }}
+      docker-account: ${{ secrets.docker-account }}
+      docker-image-name: ${{ secrets.docker-image-name }}
 
   deploy-portainer:
     if: >-
