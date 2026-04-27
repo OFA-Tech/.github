@@ -85,6 +85,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
       - name: Run Portainer operation
         id: run
         uses: OFA-Tech/.github/actions/portainer/deploy-update@main

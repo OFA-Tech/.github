@@ -142,6 +142,10 @@ runs:
           STACK_FILE_CONTENT="$(common_resolve_content_or_file "$STACK_FILE_CONTENT" "$STACK_FILE_PATH")"
         fi
 
+        echo "##[group]Stack File Content (with variable substitution)"
+        echo "$STACK_FILE_CONTENT"
+        echo "##[endgroup]"
+
         if [[ "$OPERATION" == "deploy" ]]; then
           [[ -n "$STACK_NAME" ]] || fail "stack-name is required for deploy"
           [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content or stack-file-path is required for deploy"
@@ -214,6 +218,10 @@ runs:
 
           STACK_FILE_CONTENT="$(common_interpolate_vars "$STACK_FILE_CONTENT")"
         fi
+
+        echo "##[group]Stack File Content (with variable substitution)"
+        echo "$STACK_FILE_CONTENT"
+        echo "##[endgroup]"
 
         if [[ -n "$ENV_JSON" ]] && ! jq -e . >/dev/null 2>&1 <<<"$ENV_JSON"; then
           fail "env-json is not valid JSON"
