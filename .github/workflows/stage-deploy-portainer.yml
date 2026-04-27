@@ -87,7 +87,7 @@ jobs:
     steps:
       - name: Run Portainer operation
         id: run
-        uses: OFA-TECH/.github/actions/portainer/deploy-update@main
+        uses: OFA-Tech/.github/actions/portainer/deploy-update@main
         env:
           WF_OUTPUT_DOCKER_IMAGE: ${{ inputs.full-image-name }}
           WF_OUTPUT_DOCKER_IMAGE_FULL: ${{ inputs.full-image-name }}

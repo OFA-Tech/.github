@@ -14,94 +14,43 @@ jobs:
     permissions:
       contents: write
       packages: write
-    uses: OFA-Tech/.github/.github/workflows/ci-cd.yml@v1
+    uses: OFA-Tech/.github/.github/workflows/ci-cd.yml@main
     with:
+      gh-runner: self-hosted
       language: node
       language-version: "20"
+      language-distribution: ""
       working-directory: "."
-      runner: self-hosted
-
-      run-build: true
       build-command: ""
 
-      run-tests: true
       run-unit-tests: true
       unit-test-command: ""
       run-integration-tests: false
       integration-test-command: ""
-      run-mutation-tests: false
-      mutation-test-command: ""
-      test-command: ""
 
       run-sonar: false
-      sonar-project-key: ""
-      sonar-project-name: ""
-      sonar-sources: "."
-      sonar-command: ""
-      enforce-quality-gate: false
+      sonar-enforce-quality-gate: false
+      sonar-exclusions: ""
 
-      upload-artifact: false
-      artifact-name: build-output
-      artifact-path: "."
-
-      run-docker-image: false
+      generate-docker-image: true
       docker-registry: docker.io
-      docker-account: ""
-      docker-image-name: ""
-      docker-environment: ""
-      dockerfile: Dockerfile
-      docker-context: "."
-      docker-version: ""
-      docker-push-latest: true
+      docker-image-namespace: ""
+      docker-image-repository: ""
+      docker-image-tag: ""
+      docker-image-environment: "production"
+      dockerfile-path: Dockerfile
 
       run-deploy: false
-      deploy-strategy: ""
-      deploy-mode: docker-compose
-      deploy-host: ""
-      deploy-port: ""
-      deploy-username: ""
-      deploy-remote-path: ""
-      deploy-source-glob: "**/*"
-      deploy-strip-components: "0"
-      deploy-overwrite: true
-      deploy-clean-remote: false
-      deploy-docker-image: ""
-      deploy-docker-compose-file: docker-compose.yml
-      deploy-docker-run-command: ""
-      deploy-docker-swarm-service-name: ""
-      deploy-docker-swarm-replicas: ""
-      deploy-docker-registry: docker.io
-
-      portainer-operation: update
+      portainer-endpoint-id: ""
+      portainer-swarm-id: ""
       portainer-stack-type: swarm
-      portainer-stack-id: ""
       portainer-stack-name: ""
       portainer-stack-file-content: ""
       portainer-stack-file-path: ""
-      portainer-swarm-id: ""
-      portainer-env-json: ""
-      portainer-prune: false
-      portainer-repull-image-and-redeploy: true
-      portainer-prefer-git-redeploy: true
-      portainer-endpoint-id: ""
-      portainer-url: ""
-      portainer-rollback-to: ""
 
       run-post-deploy-tests: true
       run-health-check: true
       health-check-url: ""
-      health-check-command: ""
-      health-check-expected-status: "200"
-      health-check-retries: "12"
-      health-check-interval-seconds: "10"
-      run-load-test: false
-      load-test-command: ""
-      run-contract-test: false
-      contract-test-command: ""
-
-      run-rollback: true
-      auto-rollback: true
-      manual-rollback: false
-      docker-rollback-command: ""
-      ssh-rollback-command: ""
+      health-check-retries: "10"
+      rollback-to: ""
     secrets: inherit

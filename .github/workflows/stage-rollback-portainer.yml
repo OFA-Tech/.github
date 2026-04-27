@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: Rollback Portainer Stack
         id: rollback
-        uses: OFA-TECH/.github/actions/portainer/rollback@main
+        uses: OFA-Tech/.github/actions/portainer/rollback@main
         with:
           portainer-url: ${{ secrets.PORTAINER_URL }}
           api-key: ${{ secrets.PORTAINER_TOKEN }}

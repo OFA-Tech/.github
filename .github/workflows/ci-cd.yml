@@ -209,7 +209,7 @@ on:
 
 jobs:
   build-docker:
-    uses: OFA-TECH/.github/.github/workflows/stage-build.yml@main
+    uses: OFA-Tech/.github/.github/workflows/stage-build.yml@main
     with:
       gh-runner: ${{ inputs.gh-runner }}
       language: ${{ inputs.language }}
@@ -241,7 +241,7 @@ jobs:
   deploy-portainer:
     if: ${{ inputs.run-deploy }}
     needs: [build-docker]
-    uses: OFA-TECH/.github/.github/workflows/stage-deploy-portainer.yml@main
+    uses: OFA-Tech/.github/.github/workflows/stage-deploy-portainer.yml@main
     with:
       gh-runner: ${{ inputs.gh-runner }}
       stack-type: ${{ inputs.portainer-stack-type }}
@@ -262,7 +262,7 @@ jobs:
   post-deploy:
     if: ${{  inputs.run-post-deploy-tests }}
     needs: [build-docker, deploy-portainer]
-    uses: OFA-TECH/.github/.github/workflows/stage-post-deploy.yml@main
+    uses: OFA-Tech/.github/.github/workflows/stage-post-deploy.yml@main
     with:
       gh-runner: ${{ inputs.gh-runner }}
       run-health-check: ${{ inputs.run-health-check }}
@@ -272,7 +272,7 @@ jobs:
   auto-rollback:
     if: ${{needs.post-deploy.result == 'failure'}}
     needs: [build-docker, deploy-portainer,  post-deploy]
-    uses: OFA-TECH/.github/.github/workflows/stage-rollback-portainer.yml@main
+    uses: OFA-Tech/.github/.github/workflows/stage-rollback-portainer.yml@main
     with:
       gh-runner: ${{ inputs.gh-runner }}
       endpoint-id: ${{ inputs.portainer-endpoint-id }}

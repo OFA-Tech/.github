@@ -145,7 +145,7 @@ jobs:
 
       - name: Resolve language defaults
         id: defaults
-        uses: OFA-TECH/.github/actions/setup/resolve@main
+        uses: OFA-Tech/.github/actions/setup/resolve@main
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -153,28 +153,28 @@ jobs:
           build-command: ${{ inputs.build-command }}
 
       - name: Setup runtime
-        uses: OFA-TECH/.github/actions/setup/runtime@main
+        uses: OFA-Tech/.github/actions/setup/runtime@main
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
           distribution: ${{ steps.defaults.outputs.distribution }}
 
       - name: Build
-        uses: OFA-TECH/.github/actions/run-command@main
+        uses: OFA-Tech/.github/actions/run-command@main
         with:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run unit tests
         if: ${{ inputs.run-unit-tests && (inputs.unit-test-command != '' || steps.defaults.outputs.test-command != '') }}
-        uses: OFA-TECH/.github/actions/run-command@main
+        uses: OFA-Tech/.github/actions/run-command@main
         with:
           command: ${{ inputs.unit-test-command != '' && inputs.unit-test-command || steps.defaults.outputs.test-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run integration tests
         if: ${{ inputs.run-integration-tests && inputs.integration-test-command != '' }}
-        uses: OFA-TECH/.github/actions/run-command@main
+        uses: OFA-Tech/.github/actions/run-command@main
         with:
           command: ${{ inputs.integration-test-command }}
           working-directory: ${{ inputs.working-directory }}
@@ -223,7 +223,7 @@ jobs:
 
       - name: Build and push docker image
         id: docker
-        uses: OFA-TECH/.github/actions/docker/build-image@main
+        uses: OFA-Tech/.github/actions/docker/build-image@main
         with:
           registry: ${{ inputs.docker-registry }}
           namespace: ${{ inputs.docker-image-namespace }}
