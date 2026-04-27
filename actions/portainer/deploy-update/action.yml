@@ -42,10 +42,6 @@ inputs:
     description: Optional JSON array of env vars for Portainer stack environment, for example [{"name":"A","value":"B"}]
     required: false
     default: ""
-  replace-vars-json:
-    description: Optional JSON object for compose file variable interpolation, for example {"VAR":"value"}. Supports ${VAR} and ${VAR:-default} syntax. Takes precedence over environment variables.
-    required: false
-    default: ""
   prune:
     description: Prune services not referenced anymore (mainly swarm)
     required: false
@@ -90,7 +86,6 @@ runs:
         STACK_FILE_PATH="${{ inputs.stack-file-path }}"
         SWARM_ID="${{ inputs.swarm-id }}"
         ENV_JSON="${{ inputs.env-json }}"
-        REPLACE_VARS_JSON="${{ inputs.replace-vars-json }}"
         PRUNE="${{ inputs.prune }}"
         REPULL="${{ inputs.repull-image-and-redeploy }}"
         PREFER_GIT_REDEPLOY="${{ inputs.prefer-git-redeploy }}"
@@ -145,11 +140,6 @@ runs:
 
         if [[ -n "$STACK_FILE_CONTENT" || -n "$STACK_FILE_PATH" ]]; then
           STACK_FILE_CONTENT="$(common_resolve_content_or_file "$STACK_FILE_CONTENT" "$STACK_FILE_PATH")"
-        fi
-
-        # Interpolate variables in stack file content if replace-vars-json is provided
-        if [[ -n "$STACK_FILE_CONTENT" && -n "$REPLACE_VARS_JSON" ]]; then
-          STACK_FILE_CONTENT="$(common_interpolate_vars "$STACK_FILE_CONTENT" "$REPLACE_VARS_JSON")"
         fi
 
         if [[ "$OPERATION" == "deploy" ]]; then
@@ -221,11 +211,8 @@ runs:
           STACK_FILE_RESPONSE="$(api GET "${PORTAINER_URL}/api/stacks/${STACK_ID}/file" "")"
           STACK_FILE_CONTENT="$(jq -r '.StackFileContent // empty' <<<"$STACK_FILE_RESPONSE")"
           [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content not provided and current stack file could not be retrieved"
-          
-          # Interpolate variables in fetched stack file content if replace-vars-json is provided
-          if [[ -n "$REPLACE_VARS_JSON" ]]; then
-            STACK_FILE_CONTENT="$(common_interpolate_vars "$STACK_FILE_CONTENT" "$REPLACE_VARS_JSON")"
-          fi
+
+          STACK_FILE_CONTENT="$(common_interpolate_vars "$STACK_FILE_CONTENT")"
         fi
 
         if [[ -n "$ENV_JSON" ]] && ! jq -e . >/dev/null 2>&1 <<<"$ENV_JSON"; then

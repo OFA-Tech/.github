@@ -5,39 +5,40 @@ inputs:
     description: Docker registry host (for example ghcr.io, docker.io)
     required: false
     default: docker.io
-  account:
-    description: Docker account/namespace override
+  namespace:
+    description: Optional explicit namespace override
     required: false
     default: ""
-  image-name:
-    description: Optional full image repository override (for example account/repository)
+  repository:
+    description: Optional explicit repository override
     required: false
     default: ""
-  docker-image-name:
-    description: Docker image repository name override (repository only, no account)
+  tag:
+    description: Optional explicit version tag override
+    required: false
+    default: ""
+  labels:
+    description: Newline-separated image labels (KEY=VALUE)
     required: false
     default: ""
   environment:
     description: Build environment (development, staging, production)
     required: false
-    default: ""
-  dockerfile:
+    default: "production"
+  dockerfile-path:
     description: Path to Dockerfile
     required: false
     default: Dockerfile
-  context:
+  working-directory:
     description: Docker build context path
     required: false
     default: .
   username:
-    description: Registry username override
+    description: Optional explicit registry username override
     required: false
     default: ""
-  password:
-    description: Registry password or token
-    required: true
-  version:
-    description: Optional explicit version tag override
+  token:
+    description: Optional explicit registry token override
     required: false
     default: ""
   push-latest:
@@ -48,40 +49,37 @@ inputs:
     description: Newline-separated build args (KEY=VALUE)
     required: false
     default: ""
-  labels:
-    description: Newline-separated image labels (KEY=VALUE)
-    required: false
-    default: ""
-  target:
-    description: Optional target stage name
-    required: false
-    default: ""
-  pull:
-    description: Always attempt to pull newer base images
-    required: false
-    default: "true"
-  no-cache:
+  build-no-cache:
     description: Do not use cache when building image
     required: false
-    default: "false"
+    default: "true"
 outputs:
-  account:
+  full-image-name:
+    description: Full resolved image name with registry, account, repository, and version
+    value: ${{ steps.meta.outputs.image-version-tag }}
+  image-registry:
+    description: Resolved docker registry
+    value: ${{ steps.meta.outputs.registry }}
+  image-namespace:
     description: Resolved docker account/namespace
     value: ${{ steps.meta.outputs.account }}
-  image-name:
-    description: Resolved docker image repository name
+  image-repository:
+    description: Resolved docker image
     value: ${{ steps.meta.outputs.image-name }}
+  image-tag:
+    description: Resolved docker image version tag
+    value: ${{ steps.meta.outputs.version }}
   image:
-    description: Resolved image repository name
+    description: Resolved docker image repository path without tag
     value: ${{ steps.meta.outputs.image }}
   version:
-    description: Resolved version tag
+    description: Resolved docker image version tag value
     value: ${{ steps.meta.outputs.version }}
   image-version-tag:
-    description: Fully-qualified image:version tag
+    description: Resolved docker image with version tag
     value: ${{ steps.meta.outputs.image-version-tag }}
   image-latest-tag:
-    description: Fully-qualified image:latest tag
+    description: Resolved docker image latest tag
     value: ${{ steps.meta.outputs.image-latest-tag }}
 runs:
   using: composite
@@ -99,13 +97,13 @@ runs:
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
         docker_resolve_metadata \
           "${{ inputs.registry }}" \
-          "${{ inputs.image-name }}" \
-          "${{ inputs.version }}" \
-          "${{ inputs.account }}" \
-          "${{ inputs.docker-image-name }}" \
+          "" \
+          "${{ inputs.tag }}" \
+          "${{ inputs.namespace }}" \
+          "${{ inputs.repository }}" \
           "${{ inputs.environment }}" \
           "${{ inputs.username }}" \
-          "${{ inputs.password }}" \
+          "${{ inputs.token }}" \
           "$ORG_DOCKER_ACCOUNT_SECRET" \
           "$ORG_DOCKER_IMAGE_NAME_SECRET" \
           "$ORG_DOCKER_ACCOUNT" \
@@ -127,8 +125,8 @@ runs:
           exit 1
         fi
 
-        if [ -z "${{ inputs.password }}" ]; then
-          echo "Missing Docker Hub token/password. Provide docker token via input or secret." >&2
+        if [ -z "${{ inputs.token }}" ]; then
+          echo "Missing Docker Hub token. Provide docker token via input or secret." >&2
           exit 1
         fi
 
@@ -136,10 +134,10 @@ runs:
           echo "Docker login user '$resolved_username' differs from target account '${{ steps.meta.outputs.account }}'. Ensure this user can push to ${{ steps.meta.outputs.image }}." >&2
         fi
 
-        docker_login "${{ inputs.registry }}" "$resolved_username" "${{ inputs.password }}"
+        docker_login "${{ inputs.registry }}" "$resolved_username" "${{ inputs.token }}"
 
         if [ "${{ inputs.registry }}" = "docker.io" ]; then
-          docker_verify_hub_repository_access "${{ steps.meta.outputs.account }}" "${{ steps.meta.outputs.image-name }}" "$resolved_username" "${{ inputs.password }}"
+          docker_verify_hub_repository_access "${{ steps.meta.outputs.account }}" "${{ steps.meta.outputs.image-name }}" "$resolved_username" "${{ inputs.token }}"
         fi
 
     - name: Build docker image
@@ -149,18 +147,10 @@ runs:
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
         docker_require_cmd docker
 
-        cmd=(docker build -f "${{ inputs.dockerfile }}" -t "${{ steps.meta.outputs.image-version-tag }}")
+        cmd=(docker build -f "${{ inputs.dockerfile-path }}" -t "${{ steps.meta.outputs.image-version-tag }}")
 
-        if docker_is_true "${{ inputs.pull }}"; then
-          cmd+=(--pull)
-        fi
-
-        if docker_is_true "${{ inputs.no-cache }}"; then
+        if docker_is_true "${{ inputs.build-no-cache }}"; then
           cmd+=(--no-cache)
-        fi
-
-        if [ -n "${{ inputs.target }}" ]; then
-          cmd+=(--target "${{ inputs.target }}")
         fi
 
         while IFS= read -r line; do
@@ -175,7 +165,7 @@ runs:
           fi
         done <<< "${{ inputs.labels }}"
 
-        cmd+=("${{ inputs.context }}")
+        cmd+=("${{ inputs.working-directory }}")
         "${cmd[@]}"
 
     - name: Tag latest

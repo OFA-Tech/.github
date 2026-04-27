@@ -3,11 +3,11 @@ name: Stage - Post Deploy Tests
 on:
   workflow_call:
     inputs:
-      runner:
-        description: Runner label
+      gh-runner:
+        description: Github Operating system runner label (ubuntu-latest, windows-latest, macos-latest, self-hosted, etc.)
         required: false
         type: string
-        default: self-hosted
+        default: ubuntu-latest
       run-health-check:
         description: Run health check stage
         required: false
@@ -18,55 +18,16 @@ on:
         required: false
         type: string
         default: ""
-      health-check-command:
-        description: Optional custom health check command
-        required: false
-        type: string
-        default: ""
-      health-check-expected-status:
-        description: Expected HTTP status code
-        required: false
-        type: string
-        default: "200"
       health-check-retries:
         description: Number of retries for health checks
         required: false
         type: string
-        default: "12"
-      health-check-interval-seconds:
-        description: Seconds between health retries
-        required: false
-        type: string
         default: "10"
-      run-load-test:
-        description: Run load tests when command is available
-        required: false
-        type: boolean
-        default: false
-      load-test-command:
-        description: Optional load test command
-        required: false
-        type: string
-        default: ""
-      run-contract-test:
-        description: Run contract tests when command is available
-        required: false
-        type: boolean
-        default: false
-      contract-test-command:
-        description: Optional contract test command
-        required: false
-        type: string
-        default: ""
-      working-directory:
-        description: Working directory for commands
-        required: false
-        type: string
-        default: .
+      
 
 jobs:
   post-deploy-tests:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ inputs.gh-runner }}
     permissions:
       contents: read
 
@@ -74,21 +35,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Health check with custom command
-        if: ${{ inputs.run-health-check && inputs.health-check-command != '' }}
-        uses: OFA-TECH/.github/actions/run-command@main
-        with:
-          command: ${{ inputs.health-check-command }}
-          working-directory: ${{ inputs.working-directory }}
-
       - name: Health check with HTTP probe
-        if: ${{ inputs.run-health-check && inputs.health-check-command == '' && inputs.health-check-url != '' }}
+        if: ${{ inputs.run-health-check }}
         shell: bash
         run: |
           set -euo pipefail
-          expected="${{ inputs.health-check-expected-status }}"
+          expected="200"
           retries="${{ inputs.health-check-retries }}"
-          interval="${{ inputs.health-check-interval-seconds }}"
+          interval="10"
 
           i=1
           while [ "$i" -le "$retries" ]; do
@@ -104,35 +58,3 @@ jobs:
 
           echo "Health check failed after $retries attempts." >&2
           exit 1
-
-      - name: Skip health check (not configured)
-        if: ${{ inputs.run-health-check && inputs.health-check-command == '' && inputs.health-check-url == '' }}
-        shell: bash
-        run: |
-          echo "No health check command or URL provided; skipping health check stage."
-
-      - name: Run load tests
-        if: ${{ inputs.run-load-test && inputs.load-test-command != '' }}
-        uses: OFA-TECH/.github/actions/run-command@main
-        with:
-          command: ${{ inputs.load-test-command }}
-          working-directory: ${{ inputs.working-directory }}
-
-      - name: Skip load tests (not configured)
-        if: ${{ inputs.run-load-test && inputs.load-test-command == '' }}
-        shell: bash
-        run: |
-          echo "Load test stage enabled, but no load-test-command was provided; skipping."
-
-      - name: Run contract tests
-        if: ${{ inputs.run-contract-test && inputs.contract-test-command != '' }}
-        uses: OFA-TECH/.github/actions/run-command@main
-        with:
-          command: ${{ inputs.contract-test-command }}
-          working-directory: ${{ inputs.working-directory }}
-
-      - name: Skip contract tests (not configured)
-        if: ${{ inputs.run-contract-test && inputs.contract-test-command == '' }}
-        shell: bash
-        run: |
-          echo "Contract test stage enabled, but no contract-test-command was provided; skipping."

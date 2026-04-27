@@ -80,7 +80,6 @@ jobs:
       portainer-stack-file-path: ""
       portainer-swarm-id: ""
       portainer-env-json: ""
-      portainer-replace-vars-json: ""
       portainer-prune: false
       portainer-repull-image-and-redeploy: true
       portainer-prefer-git-redeploy: true

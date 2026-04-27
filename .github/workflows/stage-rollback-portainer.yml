@@ -1,0 +1,57 @@
+name: Stage - Rollback
+
+on:
+  workflow_call:
+    outputs:
+      stack-id:
+        description: Stack ID targeted by rollback
+        value: ${{ jobs.rollback.outputs['stack-id'] }}
+      rollback-to:
+        description: Version used for rollback
+        value: ${{ jobs.rollback.outputs['rollback-to'] }}
+    inputs:
+      gh-runner:
+        description: Github Operating system runner label (ubuntu-latest, windows-latest, macos-latest, self-hosted, etc.)
+        required: false
+        type: string
+        default: self-hosted
+      endpoint-id:
+        description: Portainer endpoint ID override
+        required: false
+        type: string
+        default: ""
+      stack-name:
+        description: Portainer stack name for rollback
+        required: false
+        type: string
+        default: ""
+      rollback-to:
+        description: Optional Portainer rollback target version
+        required: false
+        type: string
+        default: ""
+    secrets:
+      PORTAINER_URL:
+        required: true
+      PORTAINER_TOKEN:
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ${{ inputs.gh-runner }}
+    outputs:
+      stack-id: ${{ steps.rollback.outputs['stack-id'] }}
+      rollback-to: ${{ steps.rollback.outputs['rollback-to'] }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Rollback Portainer Stack
+        id: rollback
+        uses: OFA-TECH/.github/actions/portainer/rollback@main
+        with:
+          portainer-url: ${{ secrets.PORTAINER_URL }}
+          api-key: ${{ secrets.PORTAINER_TOKEN }}
+          endpoint-id: ${{ inputs.endpoint-id }}
+          stack-name: ${{ inputs.stack-name }}
+          rollback-to: ${{ inputs.rollback-to }}

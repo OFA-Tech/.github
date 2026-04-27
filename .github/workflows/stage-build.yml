@@ -1,8 +1,29 @@
-name: Stage - Build
+name: Stage - Verify
 
 on:
   workflow_call:
+    outputs:
+      full-image-name:
+        description: Full resolved image name with registry, account, repository, and version
+        value: ${{ jobs.docker.outputs['full-image-name'] }}
+      image-registry:
+        description: Resolved docker registry
+        value: ${{ jobs.docker.outputs['image-registry'] }}
+      image-namespace:
+        description: Resolved docker account/namespace
+        value: ${{ jobs.docker.outputs['image-namespace'] }}
+      image-repository:
+        description: Resolved docker image
+        value: ${{ jobs.docker.outputs['image-repository'] }}
+      image-tag:
+        description: Resolved docker image version tag
+        value: ${{ jobs.docker.outputs['image-tag'] }}
     inputs:
+      gh-runner:
+        description: Github Operating system runner label (ubuntu-latest, windows-latest, macos-latest, self-hosted, etc.)
+        required: false
+        type: string
+        default: ubuntu-latest
       language:
         description: Programming language (dotnet, node, java, python, go, php, cpp)
         required: true
@@ -12,77 +33,204 @@ on:
         required: false
         type: string
         default: ""
-      distribution:
-        description: Distribution for builds
+      language-distribution:
+        description: Optional language distribution override
         required: false
         type: string
         default: ""
+      working-directory:
+        description: Application working directory for commands
+        required: false
+        type: string
+        default: .
       build-command:
         description: Optional build command override
         required: false
         type: string
         default: ""
-      working-directory:
-        description: Working directory for commands
+      run-unit-tests:
+        description: Enables unit test step
+        required: false
+        type: boolean
+        default: true
+      unit-test-command:
+        description: Optional unit test command override
         required: false
         type: string
-        default: .
-      runner:
-        description: Runner label
-        required: false
-        type: string
-        default: ubuntu-latest
-      upload-artifact:
-        description: Upload artifact after build
+        default: ""
+      run-integration-tests:
+        description: Enables integration test step
         required: false
         type: boolean
         default: false
-      artifact-name:
-        description: Artifact name
+      integration-test-command:
+        description: Optional integration test command override
         required: false
         type: string
-        default: build-output
-      artifact-path:
-        description: Path or glob to upload
+        default: ""
+      run-sonar:
+        description: Enables SonarQube step
+        required: false
+        type: boolean
+        default: false
+      sonar-enforce-quality-gate:
+        description: Fail stage if quality gate is red
+        required: false
+        type: boolean
+        default: false
+      sonar-exclusions:
+        description: Optional custom Sonar exclusions
         required: false
         type: string
-        default: .
+        default: ""
+      generate-docker-image:
+        description: Enables docker image build and push step
+        required: false
+        type: boolean 
+        default: true
+      docker-registry:
+        description: Docker registry override (e.g. docker.io, ghcr.io, etc.)
+        required: false
+        type: string
+        default: docker.io
+      docker-image-namespace:
+        description: Docker account/namespace override
+        required: false
+        type: string
+        default: ""
+      docker-image-repository:
+        description: Optional image repository name override (repository only)
+        required: false
+        type: string
+        default: ""
+      docker-image-tag:
+        description: Optional explicit image tag version
+        required: false
+        type: string
+        default: "" 
+      docker-image-environment:
+        description: Build environment for tag version prefix (development, staging, production)
+        required: false
+        type: string
+        default: "production"
+      dockerfile-path:
+        description: Dockerfile path
+        required: false
+        type: string
+        default: Dockerfile
+    secrets:
+      SONAR_TOKEN:
+        required: true
+      SONAR_HOST_URL:
+        required: true
+      SONAR_PROJECT_KEY:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ inputs.gh-runner }}
     permissions:
       contents: read
+      packages: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve language defaults
         id: defaults
-        uses: OFA-Tech/.github/actions/setup/resolve@main
+        uses: OFA-TECH/.github/actions/setup/resolve@main
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
-          distribution: ${{ inputs.distribution }}
+          distribution: ${{ inputs.language-distribution }}
           build-command: ${{ inputs.build-command }}
 
       - name: Setup runtime
-        uses: OFA-Tech/.github/actions/setup/runtime@main
+        uses: OFA-TECH/.github/actions/setup/runtime@main
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
           distribution: ${{ steps.defaults.outputs.distribution }}
 
       - name: Build
-        uses: OFA-Tech/.github/actions/run-command@main
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}
 
-      - name: Upload build artifact
-        if: ${{ inputs.upload-artifact }}
-        uses: actions/upload-artifact@v4
+      - name: Run unit tests
+        if: ${{ inputs.run-unit-tests && (inputs.unit-test-command != '' || steps.defaults.outputs.test-command != '') }}
+        uses: OFA-TECH/.github/actions/run-command@main
         with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
+          command: ${{ inputs.unit-test-command != '' && inputs.unit-test-command || steps.defaults.outputs.test-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run integration tests
+        if: ${{ inputs.run-integration-tests && inputs.integration-test-command != '' }}
+        uses: OFA-TECH/.github/actions/run-command@main
+        with:
+          command: ${{ inputs.integration-test-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run Sonar scan action
+        if: ${{ inputs.run-sonar }}
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: ${{ inputs.working-directory }}
+          args: >-
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.exclusions=${{ inputs.sonar-exclusions }}
+            -Dsonar.coverage.exclusions=${{ inputs.sonar-exclusions }}
+
+      - name: Enforce quality gate
+        if: ${{ inputs.run-sonar && inputs.sonar-enforce-quality-gate }}
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  docker:
+    if: ${{ inputs.generate-docker-image }}
+    needs: [build]
+    runs-on: ${{ inputs.gh-runner }}
+    outputs:
+      full-image-name: ${{ steps.docker.outputs.full-image-name }}
+      image-registry: ${{ steps.docker.outputs.image-registry }}
+      image-namespace: ${{ steps.docker.outputs.image-namespace }}
+      image-repository: ${{ steps.docker.outputs.image-repository }}
+      image-tag: ${{ steps.docker.outputs.image-tag }}
+      image: ${{ steps.docker.outputs.image }}
+      version: ${{ steps.docker.outputs.version }}
+      image-version-tag: ${{ steps.docker.outputs.image-version-tag }}
+      image-latest-tag: ${{ steps.docker.outputs.image-latest-tag }}
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and push docker image
+        id: docker
+        uses: OFA-TECH/.github/actions/docker/build-image@main
+        with:
+          registry: ${{ inputs.docker-registry }}
+          namespace: ${{ inputs.docker-image-namespace }}
+          repository: ${{ inputs.docker-image-repository }}
+          tag: ${{ inputs.docker-image-tag }}
+          environment: ${{ inputs.docker-image-environment }}
+          dockerfile-path: ${{ inputs.dockerfile-path }}
+          working-directory: ${{ inputs.working-directory }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          token: ${{ secrets.DOCKERHUB_TOKEN }}

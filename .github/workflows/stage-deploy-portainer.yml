@@ -1,0 +1,107 @@
+name: Stage - Portainer
+
+on:
+  workflow_call:
+    outputs:
+      stack-id:
+        description: Created or updated stack ID
+        value: ${{ jobs.portainer.outputs['stack-id'] }}
+      operation:
+        description: Operation executed (deploy|update)
+        value: ${{ jobs.portainer.outputs.operation }}
+    inputs:
+      gh-runner:
+        description: Github Operating system runner label (ubuntu-latest, windows-latest, macos-latest, self-hosted, etc.)
+        required: false
+        type: string
+        default: ubuntu-latest
+      endpoint-id:
+        description: Portainer endpoint ID
+        required: true
+        type: string
+        default: ""
+      swarm-id:
+        description: Swarm cluster ID
+        required: true
+        type: string
+        default: ""
+      stack-type:
+        description: swarm | standalone
+        required: true
+        type: string
+        default: swarm
+      stack-name:
+        description: Stack name
+        required: true
+        type: string
+        default: ""
+      stack-file-content:
+        description: Stack/compose text content
+        required: false
+        type: string
+        default: ""
+      stack-file-path:
+        description: Path to stack/compose file in repository
+        required: false
+        type: string
+        default: ""
+      full-image-name:
+        description: Build stage output for full image reference
+        required: false
+        type: string
+        default: ""
+      image-registry:
+        description: Build stage output for image registry
+        required: false
+        type: string
+        default: ""
+      image-namespace:
+        description: Build stage output for image namespace
+        required: false
+        type: string
+        default: ""
+      image-repository:
+        description: Build stage output for image repository
+        required: false
+        type: string
+        default: ""
+      image-tag:
+        description: Build stage output for image tag
+        required: false
+        type: string
+        default: ""
+    secrets:
+      PORTAINER_URL:
+        required: true
+      PORTAINER_TOKEN:
+        required: true
+
+jobs:
+  portainer:
+    runs-on: ${{ inputs.gh-runner }}
+    outputs:
+      stack-id: ${{ steps.run.outputs['stack-id'] }}
+      operation: ${{ steps.run.outputs.operation }}
+    permissions:
+      contents: read
+    steps:
+      - name: Run Portainer operation
+        id: run
+        uses: OFA-TECH/.github/actions/portainer/deploy-update@main
+        env:
+          WF_OUTPUT_DOCKER_IMAGE: ${{ inputs.full-image-name }}
+          WF_OUTPUT_DOCKER_IMAGE_FULL: ${{ inputs.full-image-name }}
+          WF_OUTPUT_DOCKER_IMAGE_REGISTRY: ${{ inputs.image-registry }}
+          WF_OUTPUT_DOCKER_IMAGE_NAMESPACE: ${{ inputs.image-namespace }}
+          WF_OUTPUT_DOCKER_IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          WF_OUTPUT_DOCKER_IMAGE_TAG: ${{ inputs.image-tag }}
+        with:
+          portainer-url: ${{ secrets.PORTAINER_URL }}
+          api-key: ${{ secrets.PORTAINER_TOKEN }}
+          endpoint-id: ${{ inputs.endpoint-id }}
+          stack-type: ${{ inputs.stack-type }}
+          operation: "deploy"
+          stack-name: ${{ inputs.stack-name }}
+          stack-file-content: ${{ inputs.stack-file-content }}
+          stack-file-path: ${{ inputs.stack-file-path }}
+          swarm-id: ${{ inputs.swarm-id }}

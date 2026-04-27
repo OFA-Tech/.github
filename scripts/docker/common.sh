@@ -372,6 +372,7 @@ docker_resolve_metadata() {
   local image_latest_tag="${resolved_image}:latest"
 
   {
+    echo "registry=$normalized_registry"
     echo "account=$resolved_account"
     echo "image-name=$resolved_image_name"
     echo "image=$resolved_image"

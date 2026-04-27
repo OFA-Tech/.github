@@ -11,8 +11,8 @@ inputs:
   endpoint-id:
     description: Portainer environment/endpoint ID
     required: true
-  stack-id:
-    description: Stack ID to rollback
+  stack-name:
+    description: Stack name to rollback
     required: true
   rollback-to:
     description: Target stack file version. If empty, the action uses current version minus one.
@@ -48,7 +48,7 @@ runs:
         PORTAINER_URL="${PORTAINER_URL%/}"
         API_KEY="${{ inputs.api-key }}"
         ENDPOINT_ID="${{ inputs.endpoint-id }}"
-        STACK_ID="${{ inputs.stack-id }}"
+        STACK_NAME="${{ inputs.stack-name }}"
         ROLLBACK_TO="${{ inputs.rollback-to }}"
         PRUNE="${{ inputs.prune }}"
         REPULL="${{ inputs.repull-image-and-redeploy }}"
@@ -91,7 +91,18 @@ runs:
         require_cmd curl
         require_cmd jq
 
-        STACK_JSON="$(api GET "${PORTAINER_URL}/api/stacks/${STACK_ID}" "")"
+        STACKS_JSON="$(api GET "${PORTAINER_URL}/api/stacks" "")"
+        STACK_JSON="$(jq -c \
+          --arg name "$STACK_NAME" \
+          --arg endpoint "$ENDPOINT_ID" '
+          map(select((.Name == $name) and (($endpoint == "") or (((.EndpointId // .EndpointID // "") | tostring) == $endpoint))))
+          | first // empty
+        ' <<<"$STACKS_JSON")"
+
+        [[ -n "$STACK_JSON" ]] || fail "Stack '${STACK_NAME}' was not found for endpoint '${ENDPOINT_ID}'"
+
+        STACK_ID="$(jq -r '.Id // .ID // empty' <<<"$STACK_JSON")"
+        [[ -n "$STACK_ID" ]] || fail "Unable to resolve stack ID for stack '${STACK_NAME}'"
 
         if [[ -z "$ROLLBACK_TO" ]]; then
           CURRENT_VERSION="$(jq -r '.Version // empty' <<<"$STACK_JSON")"
@@ -120,7 +131,7 @@ runs:
           --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
           '{RollbackTo:$rollbackTo, Prune:$prune, RepullImageAndRedeploy:$repull}')"
 
-        api PUT "${PORTAINER_URL}/api/stacks/${STACK_ID}?endpointId=${ENDPOINT_ID}" "$PAYLOAD" >/dev/null
+        api PUT "${PORTAINER_URL}/api/stacks/${STACK_ID}/rollback?endpointId=${ENDPOINT_ID}" "$PAYLOAD" >/dev/null
 
         {
           echo "stack-id=${STACK_ID}"
