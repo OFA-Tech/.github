@@ -73,6 +73,18 @@ docker_first_non_empty() {
   printf '%s' ""
 }
 
+docker_owner_fallback() {
+  local owner="${GITHUB_REPOSITORY_OWNER:-}"
+  owner="$(docker_to_lower "$owner")"
+  owner="${owner//[^a-z0-9]/}"
+
+  if [ -z "$owner" ]; then
+    owner="ofa-tech"
+  fi
+
+  printf '%s' "$owner"
+}
+
 docker_detect_source_branch() {
   if [ -n "${GITHUB_HEAD_REF:-}" ]; then
     printf '%s' "$GITHUB_HEAD_REF"
@@ -295,7 +307,7 @@ docker_resolve_metadata() {
   normalized_registry="$(docker_to_lower "$registry")"
 
   local resolved_account
-  resolved_account="$(docker_first_non_empty "$account_override" "$account_from_secret" "$account_from_env" "ofa-tech")"
+  resolved_account="$(docker_first_non_empty "$account_override" "$auth_username" "$account_from_secret" "$account_from_env" "$(docker_owner_fallback)")"
   resolved_account="$(docker_normalize_component "$resolved_account")"
   docker_validate_repo_component "$resolved_account" "Docker account"
 

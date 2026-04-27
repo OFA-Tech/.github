@@ -110,19 +110,37 @@ runs:
           local method="$1"
           local url="$2"
           local body="${3:-}"
+          local http_code
+          local response
 
           if [[ -n "$body" ]]; then
-            curl -fsSL -X "$method" \
+            http_code=$(curl -s -w "%{http_code}" -X "$method" \
               -H "X-API-Key: ${API_KEY}" \
               -H "Content-Type: application/json" \
               --data "$body" \
-              "$url"
+              -o /tmp/api_response.txt \
+              "$url")
           else
-            curl -fsSL -X "$method" \
+            http_code=$(curl -s -w "%{http_code}" -X "$method" \
               -H "X-API-Key: ${API_KEY}" \
               -H "Content-Type: application/json" \
-              "$url"
+              -o /tmp/api_response.txt \
+              "$url")
           fi
+
+          response=$(cat /tmp/api_response.txt)
+          
+          if [[ ! "$http_code" =~ ^[2].. ]]; then
+            echo "##[error]Portainer API Error" >&2
+            echo "##[error]HTTP Status: $http_code" >&2
+            echo "##[error]URL: $url" >&2
+            echo "##[error]Method: $method" >&2
+            echo "##[error]Response Body:" >&2
+            echo "$response" >&2
+            return 1
+          fi
+          
+          echo "$response"
         }
 
         require_cmd curl

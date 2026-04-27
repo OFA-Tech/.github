@@ -204,15 +204,15 @@ jobs:
     needs: [build]
     runs-on: ${{ inputs.gh-runner }}
     outputs:
-      full-image-name: ${{ steps.docker.outputs.full-image-name }}
-      image-registry: ${{ steps.docker.outputs.image-registry }}
-      image-namespace: ${{ steps.docker.outputs.image-namespace }}
-      image-repository: ${{ steps.docker.outputs.image-repository }}
-      image-tag: ${{ steps.docker.outputs.image-tag }}
+      full-image-name: ${{ steps.docker.outputs['full-image-name'] }}
+      image-registry: ${{ steps.docker.outputs['image-registry'] }}
+      image-namespace: ${{ steps.docker.outputs['image-namespace'] }}
+      image-repository: ${{ steps.docker.outputs['image-repository'] }}
+      image-tag: ${{ steps.docker.outputs['image-tag'] }}
       image: ${{ steps.docker.outputs.image }}
       version: ${{ steps.docker.outputs.version }}
-      image-version-tag: ${{ steps.docker.outputs.image-version-tag }}
-      image-latest-tag: ${{ steps.docker.outputs.image-latest-tag }}
+      image-version-tag: ${{ steps.docker.outputs['image-version-tag'] }}
+      image-latest-tag: ${{ steps.docker.outputs['image-latest-tag'] }}
     permissions:
       contents: read
       packages: write

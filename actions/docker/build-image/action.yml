@@ -56,7 +56,7 @@ inputs:
 outputs:
   full-image-name:
     description: Full resolved image name with registry, account, repository, and version
-    value: ${{ steps.meta.outputs.image-version-tag }}
+    value: ${{ steps.meta.outputs['image-version-tag'] }}
   image-registry:
     description: Resolved docker registry
     value: ${{ steps.meta.outputs.registry }}
@@ -65,7 +65,7 @@ outputs:
     value: ${{ steps.meta.outputs.account }}
   image-repository:
     description: Resolved docker image
-    value: ${{ steps.meta.outputs.image-name }}
+    value: ${{ steps.meta.outputs['image-name'] }}
   image-tag:
     description: Resolved docker image version tag
     value: ${{ steps.meta.outputs.version }}
@@ -77,10 +77,10 @@ outputs:
     value: ${{ steps.meta.outputs.version }}
   image-version-tag:
     description: Resolved docker image with version tag
-    value: ${{ steps.meta.outputs.image-version-tag }}
+    value: ${{ steps.meta.outputs['image-version-tag'] }}
   image-latest-tag:
     description: Resolved docker image latest tag
-    value: ${{ steps.meta.outputs.image-latest-tag }}
+    value: ${{ steps.meta.outputs['image-latest-tag'] }}
 runs:
   using: composite
   steps:
