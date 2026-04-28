@@ -87,6 +87,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check if stack exists
+        id: stack
+        uses: OFA-Tech/.github/actions/portainer/stack-exists@main
+        with:
+          portainer-url: ${{ secrets.PORTAINER_URL }}
+          api-key: ${{ secrets.PORTAINER_TOKEN }}
+          endpoint-id: ${{ inputs.endpoint-id }}
+          stack-name: ${{ inputs.stack-name }}
+          stack-type: ${{ inputs.stack-type }}
       
       - name: Run Portainer operation
         id: run
@@ -103,7 +113,8 @@ jobs:
           api-key: ${{ secrets.PORTAINER_TOKEN }}
           endpoint-id: ${{ inputs.endpoint-id }}
           stack-type: ${{ inputs.stack-type }}
-          operation: "deploy"
+          operation: ${{ steps.stack.outputs.exists == 'true' && 'update' || 'deploy' }}
+          stack-id: ${{ steps.stack.outputs.stack-id }}
           stack-name: ${{ inputs.stack-name }}
           stack-file-content: ${{ inputs.stack-file-content }}
           stack-file-path: ${{ inputs.stack-file-path }}
