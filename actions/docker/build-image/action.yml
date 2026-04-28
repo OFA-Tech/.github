@@ -95,14 +95,27 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
+
+        resolved_username="${{ inputs.username }}"
+        if [ -z "$resolved_username" ]; then
+          resolved_username="${GITHUB_REPOSITORY_OWNER:-}"
+        fi
+        resolved_username="$(docker_to_lower "$resolved_username")"
+
+        resolved_namespace="${{ inputs.namespace }}"
+        if [ -z "$resolved_namespace" ]; then
+          resolved_namespace="$resolved_username"
+        fi
+        echo "Resolved docker username: $resolved_username"
+        echo "Resolved docker namespace: $resolved_namespace"
         docker_resolve_metadata \
           "${{ inputs.registry }}" \
           "" \
           "${{ inputs.tag }}" \
-          "${{ inputs.namespace }}" \
+          "$resolved_namespace" \
           "${{ inputs.repository }}" \
           "${{ inputs.environment }}" \
-          "${{ inputs.username }}" \
+          "$resolved_username" \
           "${{ inputs.token }}" \
           "$ORG_DOCKER_ACCOUNT_SECRET" \
           "$ORG_DOCKER_IMAGE_NAME_SECRET" \
