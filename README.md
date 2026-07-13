@@ -14,6 +14,15 @@ Provide production-grade, reusable CI/CD building blocks that can be consumed by
 - Language-specific behavior is dynamic and parameterized.
 - No repository-specific logic is hardcoded.
 
+### Orchestration vs operations (TypeScript vs Shell)
+
+Complex logic — branching, multi-step orchestration, API clients, error
+handling, and retries — lives in the shared **TypeScript action library**
+under `src/` (built on `@actions/core`/`@actions/exec`, bundled into `dist/`).
+Shell stays dumb: single-purpose, stateless CLI invocations under `scripts/`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full decision rule, repository
+layout, and the audit map of what moved where.
+
 ## Reusable Workflows
 
 - `.github/workflows/ci-cd.yml`: Central orchestration workflow (build, test, sonar, image, deploy).

@@ -1,1 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build artifacts (except dist/, which is intentionally committed)
+lib-build/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Logs
 logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# NOTE: dist/ is intentionally committed. GitHub runs node actions directly from
+# the bundled dist/ without installing dependencies, so it must be version-controlled.
+# Run `npm run build` and commit dist/ whenever src/ changes.
+!dist/
