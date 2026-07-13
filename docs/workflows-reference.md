@@ -1,5 +1,14 @@
 # Workflows & Templates Reference
 
+## Self-references are local
+
+Within this repository, workflows call each other with local relative paths
+(`uses: ./.github/workflows/stage-*.yml`), so every stage runs from the same
+commit as the `ci-cd.yml` that was called. Jobs that need this repository's
+actions check the repo out into `.ofa-tech-actions/` (pinned to
+`github.job_workflow_sha`, falling back to the default branch) and reference
+the actions as `./.ofa-tech-actions/actions/...`.
+
 ## Reusable workflow: `.github/workflows/ci-cd.yml`
 
 Main orchestration entrypoint (`workflow_call`) for build, image, deploy, post-deploy validation, and conditional rollback.
@@ -34,7 +43,7 @@ Main orchestration entrypoint (`workflow_call`) for build, image, deploy, post-d
 Two-job stage:
 
 - `build`: checkout, resolve defaults, setup runtime, build, tests, optional Sonar scan + optional quality gate
-- `docker`: optional image build + push via `actions/docker/build-image`
+- `docker`: optional image build + push via `actions/docker/build-image` (metadata/versioning resolved by the TypeScript bundle, docker CLI steps in shell)
 
 This stage emits image metadata for downstream deploy steps.
 
@@ -45,7 +54,9 @@ This stage emits image metadata for downstream deploy steps.
 - Detects stack existence using `actions/portainer/stack-exists`
 - Chooses operation dynamically (`deploy` vs `update`)
 - Executes using `actions/portainer/deploy-update`
-- Injects image metadata via env (`WF_OUTPUT_*`) to support template interpolation
+- Injects image metadata via env (`WF_OUTPUT_*`); the stack file read from the
+  consumer checkout is interpolated in TypeScript before it is sent to the
+  Portainer API
 
 ---
 
@@ -59,7 +70,7 @@ Runs HTTP health probing (`curl`) with retry loop and fixed interval.
 
 ## Stage workflow: `stage-rollback-portainer.yml`
 
-Runs rollback action (`actions/portainer/rollback`) after failed post-deploy validation.
+Runs the Node 20 rollback action (`actions/portainer/rollback`) after failed post-deploy validation.
 
 Defaults to `self-hosted` runner if not overridden.
 

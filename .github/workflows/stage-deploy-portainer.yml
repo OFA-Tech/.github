@@ -88,9 +88,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Local actions resolve against the job workspace, so check this
+      # repository out next to the consumer code at the same ref this
+      # reusable workflow was called with (falls back to the default branch).
+      - name: Checkout OFA-Tech actions
+        uses: actions/checkout@v6
+        with:
+          repository: OFA-Tech/.github
+          ref: ${{ github.job_workflow_sha }}
+          path: .ofa-tech-actions
+
       - name: Check if stack exists
         id: stack
-        uses: OFA-Tech/.github/actions/portainer/stack-exists@main
+        uses: ./.ofa-tech-actions/actions/portainer/stack-exists
         with:
           portainer-url: ${{ secrets.PORTAINER_URL }}
           api-key: ${{ secrets.PORTAINER_TOKEN }}
@@ -100,7 +110,7 @@ jobs:
       
       - name: Run Portainer operation
         id: run
-        uses: OFA-Tech/.github/actions/portainer/deploy-update@main
+        uses: ./.ofa-tech-actions/actions/portainer/deploy-update
         env:
           WF_OUTPUT_DOCKER_IMAGE: ${{ inputs.full-image-name }}
           WF_OUTPUT_DOCKER_IMAGE_FULL: ${{ inputs.full-image-name }}

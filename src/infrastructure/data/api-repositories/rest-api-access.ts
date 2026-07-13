@@ -1,58 +1,23 @@
 /**
- * Centralized REST access service — the TypeScript translation of
- * `docs/guides/snippets/RestApiAccess.cs`.
+ * Fetch-based implementation of the {@link RestApiAccess} domain port — the
+ * one place HTTP execution happens.
  *
  * Owns everything protocol-level once, for every API repository: URL and
  * query-string assembly, headers and authentication, JSON encoding/decoding,
  * request timeout, a bounded retry policy for idempotent requests, and the
  * mapping of failures to {@link UpstreamError}/{@link TimeoutError}.
  *
- * Named API clients (Portainer today, any future area) only build a
+ * Named API clients (Portainer, Docker Hub, any future area) only build a
  * {@link RestApiRequest} describing *what* to call and delegate the *how*
  * here — they must not re-implement fetch/retry/error handling per repository.
  */
 import { logger } from "../../../application/core/logger";
+import type { RestApiAccess } from "../../../domain/interfaces/rest-api-access";
+import type { RestApiRequest, RestApiResponse } from "../../../domain/models/rest-api";
 import { TimeoutError, UpstreamError } from "../../../domain/shared-utils/errors";
-
-export type ApiRequestMethod =
-  | "GET"
-  | "POST"
-  | "PUT"
-  | "PATCH"
-  | "DELETE"
-  | "HEAD"
-  | "OPTIONS";
-
-/** Sets the standard `Authorization: <scheme> <value>` header. */
-export interface ApiAuthentication {
-  scheme: string;
-  value: string;
-}
-
-export interface RestApiRequest {
-  method: ApiRequestMethod;
-  /** Absolute URL; entries from `query` are appended as search parameters. */
-  url: string;
-  /** Query parameters; `undefined` and empty values are skipped. */
-  query?: Record<string, string | number | undefined>;
-  /** Extra headers (e.g. API-key headers) merged over the JSON defaults. */
-  headers?: Record<string, string>;
-  authentication?: ApiAuthentication;
-  /** JSON-encoded into the request body when defined. */
-  body?: unknown;
-  /** Abort the request after this many milliseconds. */
-  timeoutMs?: number;
-  /** Retry on transient failure. Only safe for idempotent calls. */
-  retryable?: boolean;
-}
-
-export interface RestApiResponse<T> {
-  statusCode: number;
-  /** HTTP reason phrase. */
-  message: string;
-  data: T;
-  headers: Record<string, string>;
-}
+import { sleep } from "../../../domain/shared-utils/sleep";
+import { truncate } from "../../../domain/shared-utils/truncate";
+import { buildUrl } from "../../../domain/shared-utils/url";
 
 export interface RestApiAccessOptions {
   /** Service name used in error messages and logs. Default "API". */
@@ -65,7 +30,7 @@ export interface RestApiAccessOptions {
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-export class RestApiAccess {
+export class FetchRestApiAccess implements RestApiAccess {
   private readonly name: string;
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
@@ -171,18 +136,6 @@ export class RestApiAccess {
   }
 }
 
-function buildUrl(base: string, query?: RestApiRequest["query"]): string {
-  const url = new URL(base);
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== "") {
-        url.searchParams.set(key, String(value));
-      }
-    }
-  }
-  return url.toString();
-}
-
 function collectHeaders(response: Response): Record<string, string> {
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => {
@@ -193,12 +146,4 @@ function collectHeaders(response: Response): Record<string, string> {
 
 function isAbort(error: unknown): boolean {
   return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function truncate(value: string, max = 2000): string {
-  return value.length > max ? `${value.slice(0, max)}…` : value;
 }

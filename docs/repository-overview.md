@@ -35,21 +35,22 @@ This boundary is documented in `CONTRIBUTING.md` and reflected in current implem
 
 ## Current Node actions implemented in TypeScript
 
-1. `portainer-deploy`
-2. `portainer-stack-exists`
+1. `portainer-deploy` (`actions/portainer/deploy-update`)
+2. `portainer-stack-exists` (`actions/portainer/stack-exists`)
+3. `portainer-rollback` (`actions/portainer/rollback`)
+4. `docker-metadata` (`actions/docker/metadata`, also the metadata step of `actions/docker/build-image`)
 
 These compile to:
 
 - `dist/portainer-deploy/index.js`
 - `dist/portainer-stack-exists/index.js`
+- `dist/portainer-rollback/index.js`
+- `dist/docker-metadata/index.js`
 
-## Notable consistency check
+## Self-reference policy
 
-`README.md` describes legacy stage names like `stage-test.yml` and `stage-sonar.yml`, while current workflow composition is centered on:
-
-- `stage-build.yml`
-- `stage-deploy-portainer.yml`
-- `stage-post-deploy.yml`
-- `stage-rollback-portainer.yml`
-
-This is a documentation drift worth aligning in a future cleanup.
+Workflows and actions that live in this repository are referenced with local
+relative paths from the reusable workflows (`./.github/workflows/…` for nested
+workflow calls; `./.ofa-tech-actions/actions/…` after a pinned checkout for
+step-level actions), so a pipeline never mixes refs of this repository within
+one run.

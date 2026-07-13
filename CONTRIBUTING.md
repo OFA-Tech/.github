@@ -61,33 +61,41 @@ If **all** answers are "no" — it is shell:
 .
 ├── .github/workflows/      # Reusable workflows (workflow_call) — orchestration glue
 ├── actions/                # Action manifests (action.yml) — the public contract
-│   ├── portainer/          #   node20 actions → point at dist/ bundles
-│   ├── docker/             #   shell actions  → thin docker CLI wrappers
+│   ├── portainer/          #   node20 actions (deploy-update, stack-exists, rollback)
+│   │                       #   → point at dist/ bundles; the rest are shell utilities
+│   ├── docker/             #   metadata → node20 bundle; build/deploy/scale → shell CLI wrappers
+│   ├── setup/, run-command/#   shell actions → language defaults, runtime setup, command runner
 │   └── ssh/                #   shell actions  → third-party action wrappers
 ├── src/                    # TypeScript source, organized as DDD layers
 │   ├── domain/             #   business model — pure, side-effect free
 │   │   ├── entities/       #     aggregate roots / entities (Stack)
 │   │   ├── enums/          #     closed vocabularies (StackType, DeployOperation)
 │   │   ├── interfaces/     #     ports implemented by infrastructure
-│   │   ├── models/         #     value objects & result models (Template, StackLookup, …)
+│   │   ├── models/         #     value objects & result models (Template, StackLookup,
+│   │   │                   #     ImageCoordinates, SemverDateTag, BuildEnvironment, …)
 │   │   └── shared-utils/   #     shared kernel: error taxonomy + exit codes
 │   │       #                     (mappings/ and extensions/ are reserved slots)
 │   ├── application/        #   orchestration, organized by feature area
 │   │   ├── core/           #     shared area: logging, typed IO, runAction(), StackFileResolver
-│   │   └── portainer/      #     feature area owning everything Portainer
-│   │       ├── actions/    #       node action entrypoints (deploy, stack-exists)
-│   │       └── use-cases/  #       one use-case class per stack operation
+│   │   ├── portainer/      #     feature area owning everything Portainer
+│   │   │   ├── actions/    #       node action entrypoints (deploy, stack-exists, rollback)
+│   │   │   └── use-cases/  #       one use-case class per stack operation
+│   │   └── docker/         #     feature area owning docker image metadata
+│   │       ├── actions/    #       node action entrypoint (docker-metadata)
+│   │       └── use-cases/  #       ResolveImageMetadataUseCase
 │   └── infrastructure/     #   side effects and runtime wiring
 │       ├── cross-cutting/
 │       │   └── dependency-injections/  # factories wiring ports → implementations
 │       │       #                         (setups/ is a reserved slot)
 │       └── data/
-│           ├── api-repositories/       # RestApiAccess (shared HTTP) + per-API clients (portainer/)
-│           └── file-system-repository/ # FileSystemAccess (shared FS) + repositories
-│           #   database-repositories/ is a reserved slot (see docs/guides/snippets)
+│           ├── api-repositories/       # FetchRestApiAccess (shared HTTP) + named clients
+│           │                           #   (portainer/, docker-hub/)
+│           ├── file-system-repository/ # FileSystemAccess (shared FS) + repositories
+│           └── command-line-repository/# @actions/exec adapters (docker manifest, source branch)
+│           #   database-repositories/ is a reserved slot
 ├── scripts/                # Dumb shell helpers sourced by shell actions
-│   ├── docker/             #   single-purpose docker helpers
-│   ├── common/             #   single-purpose shell helpers
+│   ├── docker/             #   single-purpose docker helpers (login, preflight, truthy parsing)
+│   ├── common/             #   single-purpose shell helpers (lowercase, output, eval)
 │   └── build/              #   bundler that emits dist/
 ├── dist/                   # Committed ncc bundles — what node actions actually run
 └── test/                   # Unit tests for the library
@@ -110,8 +118,11 @@ If **all** answers are "no" — it is shell:
   built on the shared `RestApiAccess` service — never call `fetch` directly
 - **File and path based operations** → `src/infrastructure/data/file-system-repository/`,
   built on the shared `FileSystemAccess` service — never call `node:fs` directly
+- **CLI-backed lookups (docker, git)** → `src/infrastructure/data/command-line-repository/`,
+  built on `@actions/exec` — never call `child_process` directly
 - **Database access (when added)** → `src/infrastructure/data/database-repositories/`,
-  as a shared `DatabaseAccess` service modeled on `docs/guides/snippets/DatabaseAccess.cs`
+  as a shared `DatabaseAccess` service following the same access-service style
+  as `RestApiAccess`/`FileSystemAccess`
 - **Wiring a port to an implementation** → `src/infrastructure/cross-cutting/dependency-injections/`
 - **A single-purpose shell command** → `scripts/<domain>/`
 - **The public manifest** → `actions/<group>/<name>/action.yml`
@@ -147,9 +158,9 @@ async function body(): Promise<void> {
 void runAction({ name: "my-action" }, body);
 ```
 
-### Portainer — the model application area
+### Portainer and Docker — the application areas
 
-Portainer is one feature area; use it as the template for any new area:
+Portainer is the model feature area; use it as the template for any new area:
 
 - **Domain** — the `Stack` entity (`domain/entities`), `StackType`
   (`domain/enums`), `StackEnvironment`, `RollbackTarget`, and `StackLookup`
@@ -159,17 +170,16 @@ Portainer is one feature area; use it as the template for any new area:
   operation (`FindStackUseCase`, `DeployStackUseCase`, `UpdateStackUseCase`,
   `RollbackStackUseCase`), each depending only on the `StackRepository` port.
 - **`src/application/portainer/actions/`** — the feature's action entrypoints
-  (`deploy-action.ts`, `stack-exists-action.ts`): read inputs, call use cases,
-  write outputs.
+  (`deploy-action.ts`, `stack-exists-action.ts`, `rollback-action.ts`): read
+  inputs, call use cases, write outputs.
 - **`src/infrastructure/data/api-repositories/portainer/`** —
   `PortainerClient` (a *named client*: base URL, `X-API-Key`, secret masking,
   and which calls are idempotent), the wire DTOs, and
   `PortainerStackRepository`, which implements the port and maps DTOs to the
   domain model at the boundary. All transport mechanics — query assembly,
   JSON encode/decode, timeout, retries, non-2xx → `UpstreamError` — live once
-  in the shared `RestApiAccess` service (the TypeScript translation of
-  `docs/guides/snippets/RestApiAccess.cs`); a future API area adds its own
-  named client and reuses it.
+  in the shared `FetchRestApiAccess` service; every API area (Portainer,
+  Docker Hub, any future one) adds its own named client and reuses it.
 - **`src/infrastructure/cross-cutting/dependency-injections/portainer.ts`** —
   `createPortainerStacks()` wires the repository into the use cases so
   entrypoints never construct infrastructure directly.
@@ -180,6 +190,22 @@ lives in `application/core`, its `WorkspaceFileReader` port in
 `domain/interfaces`, and the filesystem adapter in
 `infrastructure/data/file-system-repository`. New behaviour extends these
 layers — it does not re-implement `curl`/`jq` in bash.
+
+The Docker area follows the same shape for image metadata:
+
+- **Domain** — `ImageCoordinates`, `SemverDateTag`, `BuildEnvironment`, and
+  the version-bump rules (`domain/models`), plus the `ImageTagRepository`,
+  `ImageManifestAccess`, and `SourceBranchAccess` ports (`domain/interfaces`).
+- **`src/application/docker/use-cases/`** — `ResolveImageMetadataUseCase`:
+  account/repository fallbacks, branch-based version bumping, and the
+  tag-collision loop.
+- **`src/application/docker/actions/docker-metadata-action.ts`** — the
+  entrypoint behind `actions/docker/metadata` and the metadata step of
+  `actions/docker/build-image`.
+- **Infrastructure** — the `docker-hub/` named client + tag repository
+  (`api-repositories`), and `@actions/exec`-based adapters for
+  `docker manifest inspect` and source-branch detection
+  (`command-line-repository`).
 
 ---
 
@@ -212,22 +238,22 @@ with `src/`. Always run `npm run build` and commit `dist/` before pushing.
 
 ---
 
-## Audit map (initial refactor)
+## Audit map
 
-How the existing surface was classified against the decision rule.
+How the surface is classified against the decision rule.
 
 | Item | Classification | Rationale |
 | --- | --- | --- |
-| `actions/portainer/deploy-update` | **→ TypeScript** | deploy/update branching, git-redeploy detection, API error handling |
-| `actions/portainer/stack-exists` | **→ TypeScript** | API lookup + stack-type resolution |
-| `actions/portainer/rollback` | **→ TypeScript** (lib ready) | version math, validation, API call |
-| `scripts/common/action-common.sh` (`common_interpolate_vars`) | **→ TypeScript** | multi-scope `${VAR:-default}` resolution engine |
-| `scripts/docker/common.sh` (`docker_resolve_metadata`) | **→ TypeScript** (candidate) | semver resolution, branch-based bumping, collision-retry loop |
-| `actions/docker/build-image` (build/tag/push steps) | **stays shell** | stateless `docker build`/`tag`/`push` |
+| `actions/portainer/deploy-update` | **TypeScript (done)** | deploy/update branching, git-redeploy detection, API error handling |
+| `actions/portainer/stack-exists` | **TypeScript (done)** | API lookup + stack-type resolution |
+| `actions/portainer/rollback` | **TypeScript (done)** | version math, validation, API call |
+| Stack-file interpolation (was `common_interpolate_vars`) | **TypeScript (done)** | multi-scope `${VAR:-default}` resolution engine, now `Template`/`ScopedVariables` inside the deploy path |
+| Docker metadata/versioning (was `docker_resolve_metadata`) | **TypeScript (done)** | semver resolution, branch-based bumping, collision-retry loop — now `actions/docker/metadata` and the metadata step of `build-image` |
+| `actions/docker/build-image` (login/build/tag/push steps) | **stays shell** | stateless `docker login`/`build`/`tag`/`push` |
 | `actions/docker/swarm-deploy` / `swarm-scale` / `remove` | **stays shell** | `docker service` CLI invocations |
 | `actions/run-command` | **stays shell** | single `eval` of a command |
 | `actions/ssh/command` / `ssh/upload` | **stays shell** | thin wrappers over `appleboy/ssh-action` |
 
-Items marked "candidate"/"lib ready" have their logic available in the `src/`
-layers and are the next migrations; their shell remains until converted so no contract
-breaks in the interim.
+The migrated shell helpers were deleted from `scripts/`; what remains there is
+intentionally dumb (truthy parsing, lowercase, output writing, `docker login`,
+the Docker Hub push-permission preflight).

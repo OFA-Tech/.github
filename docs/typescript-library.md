@@ -8,19 +8,22 @@ infrastructure by runtime/data-access concern.
 - `src/domain/` — pure business model and contract surface:
   - `entities/` (Stack)
   - `enums/` (StackType, DeployOperation, ApiRequestMethod)
-  - `interfaces/` (ports: StackRepository, WorkspaceFileReader, RestApiAccess, FileSystemAccess)
-  - `models/` (StackLookup, StackEnvironment, RollbackTarget, Template, Placeholder, ScopedVariables, RestApiRequest/RestApiResponse)
+  - `interfaces/` (ports: StackRepository, WorkspaceFileReader, RestApiAccess, FileSystemAccess, ImageTagRepository, ImageManifestAccess, SourceBranchAccess)
+  - `models/` (StackLookup, StackEnvironment, RollbackTarget, Template, Placeholder, ScopedVariables, RestApiRequest/RestApiResponse, ImageCoordinates, SemverDateTag, BuildEnvironment, version-bump rules)
   - `shared-utils/` (error kernel + pure helpers, one per file: `sleep`, `truncate`, `buildUrl`, `toEnvKey`/`isValidVariableName`)
   - `mappings/` and `extensions/` are reserved slots for future domain mapping contracts and extension helpers
 - `src/application/` — orchestration by feature area:
   - `core/` — shared area: logger, typed inputs/outputs, `runAction()`, `StackFileResolver`
   - `portainer/` — feature area: `use-cases/` plus its own `actions/` entrypoints
+  - `docker/` — feature area: `ResolveImageMetadataUseCase` plus the `docker-metadata` entrypoint
 - `src/infrastructure/` — side effects and wiring:
   - `cross-cutting/dependency-injections/` — factories wiring ports to implementations (`setups/` reserved)
-  - `data/api-repositories/rest-api-access.ts` — `FetchRestApiAccess`, implementing the domain `RestApiAccess` port (all HTTP execution, translated from `RestApiAccess.cs`; the request/response contract lives in `domain/models/rest-api.ts`)
+  - `data/api-repositories/rest-api-access.ts` — `FetchRestApiAccess`, implementing the domain `RestApiAccess` port (all HTTP execution; the request/response contract lives in `domain/models/rest-api.ts`)
   - `data/api-repositories/portainer/` — named Portainer client, wire DTOs, DTO→domain mapper, repository adapter (one concern per file)
+  - `data/api-repositories/docker-hub/` — named Docker Hub client (Basic auth), wire DTOs, tag repository implementing the `ImageTagRepository` port (best-effort: degrades without credentials)
   - `data/file-system-repository/` — `NodeFileSystemAccess`, implementing the domain `FileSystemAccess` port, + workspace file reader
-  - `data/database-repositories/` — reserved; add a shared `DatabaseAccess` modeled on `docs/guides/snippets/DatabaseAccess.cs`
+  - `data/command-line-repository/` — `@actions/exec` adapters: `DockerCliManifestAccess` (`docker manifest inspect`) and `GitHubSourceBranchAccess` (head ref → event payload → commit subject)
+  - `data/database-repositories/` — reserved; add a shared `DatabaseAccess` following the same access-service style
 
 Dependency direction: `domain` depends on nothing; `application` depends on
 `domain`; `infrastructure` implements domain interfaces. Entrypoints reach
@@ -123,7 +126,25 @@ The shared access service plus everything Portainer-specific:
 - `portainer/stack-repository.ts` — `PortainerStackRepository` adapter: API paths and request bodies only
 
 ### `infrastructure/cross-cutting/dependency-injections/`
-`createPortainerStacks()` and `createStackFileResolver()` wire the repositories into the use cases; entrypoints only see the returned use-case objects.
+`createPortainerStacks()`, `createStackFileResolver()`, and `createImageMetadataResolver()` wire the adapters into the use cases; entrypoints only see the returned use-case objects.
+
+---
+
+## Docker application area
+
+### Domain pieces
+- `models/image-coordinates.ts` — `ImageCoordinates` value object (component normalization/validation, registry-aware image path)
+- `models/semver-date-tag.ts` — `SemverDateTag` (`[dev-|stg-]M.m.p-yyyymmdd` parsing/formatting) and `latestSemverBaseline` (highest triplet + max point overall)
+- `models/version-bump.ts` — branch → bump rules (`feature/*` major, `fix/*`/`hotfix/*` minor, else patch) and `nextVersion`
+- `models/build-environment.ts` — `BuildEnvironment` (requested-or-ref resolution, `dev-`/`stg-` tag prefix)
+- `interfaces/` — `ImageTagRepository`, `ImageManifestAccess`, `SourceBranchAccess` ports
+
+### `application/docker/use-cases/resolve-image-metadata.ts`
+`ResolveImageMetadataUseCase`: account/repository fallback precedence
+(override → username → `DOCKER_*` secret/env → GitHub context), version
+generation from the published baseline, and the collision loop that advances
+the point version until the tag is unpublished (Docker Hub lookup +
+`docker manifest inspect`).
 
 ---
 
@@ -134,6 +155,15 @@ Parses action inputs, resolves stack file content/interpolation via `StackFileRe
 
 ### `src/application/portainer/actions/stack-exists-action.ts`
 Runs `FindStackUseCase`, lets `StackLookup.ensureType` enforce the optional expected type, writes existence outputs.
+
+### `src/application/portainer/actions/rollback-action.ts`
+Runs `RollbackStackUseCase` (explicit `rollback-to` or current-minus-one default), writes `stack-id`/`rollback-to` outputs.
+
+### `src/application/docker/actions/docker-metadata-action.ts`
+Runs `ResolveImageMetadataUseCase` and writes the metadata output contract
+(`registry`, `account`, `image-name`, `image`, `version`, `image-version-tag`,
+`image-latest-tag`). Used by `actions/docker/metadata` and invoked as
+`node dist/docker-metadata/index.js` by the `build-image` composite.
 
 ---
 
@@ -146,6 +176,8 @@ Current `ACTION_ENTRIES`:
 
 - `src/application/portainer/actions/deploy-action.ts` → `dist/portainer-deploy/index.js`
 - `src/application/portainer/actions/stack-exists-action.ts` → `dist/portainer-stack-exists/index.js`
+- `src/application/portainer/actions/rollback-action.ts` → `dist/portainer-rollback/index.js`
+- `src/application/docker/actions/docker-metadata-action.ts` → `dist/docker-metadata/index.js`
 
 ### Why `dist/` is committed
 
@@ -164,3 +196,6 @@ GitHub Action runners execute Node actions from committed bundle files. They do 
 - `portainer-client.test.ts` proves the named client only adds Portainer specifics on top of `RestApiAccess`
 - `file-system-access.test.ts` covers the shared filesystem service and the workspace reader against real temp files
 - `shared-utils.test.ts` covers the pure helpers (`truncate`, `buildUrl`, `toEnvKey`, `isValidVariableName`) and the `Placeholder` model
+- `docker-domain.test.ts` validates the docker value objects (`ImageCoordinates`, `SemverDateTag`, baseline math, bump rules, `BuildEnvironment`)
+- `docker-use-cases.test.ts` drives `ResolveImageMetadataUseCase` against in-memory fakes (fallback precedence, version generation, collision loop)
+- `docker-repository.test.ts` covers the Docker Hub tag repository (auth, endpoints, credential-less degradation) and the source-branch adapter

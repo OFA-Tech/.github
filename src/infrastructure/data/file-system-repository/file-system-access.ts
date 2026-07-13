@@ -1,7 +1,6 @@
 /**
  * Node implementation of the {@link FileSystemAccess} domain port —
- * the filesystem counterpart of the REST access service, following the
- * data-access style of `docs/guides/snippets`.
+ * the filesystem counterpart of the REST access service.
  *
  * Owns path resolution and disk reads once, so repositories describe *which*
  * file they need and never touch `node:fs` directly.

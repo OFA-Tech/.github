@@ -46,9 +46,19 @@ jobs:
       contents: read
 
     steps:
+      # Local actions resolve against the job workspace, so check this
+      # repository out at the same ref this reusable workflow was called
+      # with (falls back to the default branch).
+      - name: Checkout OFA-Tech actions
+        uses: actions/checkout@v6
+        with:
+          repository: OFA-Tech/.github
+          ref: ${{ github.job_workflow_sha }}
+          path: .ofa-tech-actions
+
       - name: Rollback Portainer Stack
         id: rollback
-        uses: OFA-Tech/.github/actions/portainer/rollback@main
+        uses: ./.ofa-tech-actions/actions/portainer/rollback
         with:
           portainer-url: ${{ secrets.PORTAINER_URL }}
           api-key: ${{ secrets.PORTAINER_TOKEN }}

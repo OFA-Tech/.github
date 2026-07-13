@@ -27,14 +27,21 @@ Executes arbitrary command in optional working directory (`bash`, strict mode en
 
 ## Docker actions
 
+### `actions/docker/metadata` (Node 20)
+Uses the TypeScript bundle (`dist/docker-metadata/index.js`) to resolve image
+metadata: registry/account/repository fallbacks (overrides → secrets → env →
+GitHub context), branch-based version bumping (`feature/*` → major,
+`fix/*`/`hotfix/*` → minor, otherwise point), the `dev-`/`stg-` environment
+prefix, and Docker Hub / `docker manifest` collision checks.
+
 ### `actions/docker/build-image`
 Composite action that:
 
-1. resolves image metadata (registry/account/repo/tag)
-2. logs in to registry
-3. builds image
-4. tags `latest` optionally
-5. pushes version and optional latest tags
+1. resolves image metadata via the TypeScript `docker-metadata` bundle (same logic as `actions/docker/metadata`)
+2. logs in to registry (shell)
+3. builds image (shell)
+4. tags `latest` optionally (shell)
+5. pushes version and optional latest tags (shell)
 
 It emits rich metadata outputs used by downstream workflows.
 
@@ -58,13 +65,18 @@ Despite the directory name, current manifest is a generalized `docker run` wrapp
 ## Portainer actions
 
 ### `actions/portainer/deploy-update` (Node 20)
-Uses TypeScript bundle (`dist/portainer-deploy/index.js`) for deploy/update orchestration.
+Uses TypeScript bundle (`dist/portainer-deploy/index.js`) for deploy/update
+orchestration. Stack-file content is read from inline input or the workspace
+file and placeholder interpolation (`${NAME}` / `${NAME:-default}`) happens in
+TypeScript before the file is sent to the Portainer API.
 
 ### `actions/portainer/stack-exists` (Node 20)
 Uses TypeScript bundle (`dist/portainer-stack-exists/index.js`) for stack lookup and type resolution.
 
-### `actions/portainer/rollback` (composite shell)
-Calls Portainer rollback API directly with `curl` + `jq`, computes fallback rollback version from current version.
+### `actions/portainer/rollback` (Node 20)
+Uses TypeScript bundle (`dist/portainer-rollback/index.js`): looks the stack up
+by name, computes the fallback rollback version (current minus one) when
+`rollback-to` is not provided, and calls the Portainer rollback API.
 
 ### `actions/portainer/status`
 Checks Portainer health and optionally endpoint runtime mode.

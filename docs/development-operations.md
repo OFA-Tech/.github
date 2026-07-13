@@ -33,22 +33,31 @@ If it fails:
 
 ## Shell helper responsibilities
 
+Shell helpers are intentionally dumb; everything with branching, API access,
+or data transformation lives in the TypeScript library.
+
 ### `scripts/common/action-common.sh`
 Provides generic helpers:
 
-- command evaluation
+- lowercase conversion
 - output writing
-- file-content loading
-- placeholder interpolation functions
+- command evaluation
+
+Stack-file loading and placeholder interpolation moved to TypeScript
+(`Template`/`ScopedVariables` + `StackFileResolver`, used by the Portainer
+deploy bundle).
 
 ### `scripts/docker/common.sh`
 Provides Docker-specific helpers:
 
 - truthy parsing
-- metadata resolution (registry/account/repo/tag)
-- Docker Hub preflight checks
-- automatic semantic-style tag generation with date suffix and collision checks
-- registry login
+- required-command checks
+- username resolution and registry login
+- Docker Hub push-permission preflight
+
+Metadata resolution and version-tag generation (branch-based bumping, date
+suffix, collision checks) moved to TypeScript (`actions/docker/metadata` /
+`dist/docker-metadata`).
 
 ## Operational caution points
 

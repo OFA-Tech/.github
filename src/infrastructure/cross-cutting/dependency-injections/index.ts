@@ -5,3 +5,4 @@
  */
 export * from "./portainer";
 export * from "./stack-file";
+export * from "./docker";

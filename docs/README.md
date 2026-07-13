@@ -21,7 +21,7 @@ This repo is the organization-level CI/CD platform for OFA-Tech. It provides:
 - [Actions Reference](./actions-reference.md)
 - [TypeScript Library & Build System](./typescript-library.md)
 - [Development & Operations Guide](./development-operations.md)
-- [Branch Snapshot (`main`)](./branch-snapshot-main.md)
+- [Branch Snapshot](./branch-snapshot.md)
 
 ## Important operational rule
 
