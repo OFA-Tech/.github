@@ -197,8 +197,11 @@ on:
         required: true
       SONAR_PROJECT_KEY:
         required: true
+      # Prefer the DOCKERHUB_USERNAME repository *variable* over this secret:
+      # a username stored as a secret gets masked, and job outputs containing
+      # it (image name, namespace, tags) are silently dropped by the runner.
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
         required: true
       PORTAINER_URL:

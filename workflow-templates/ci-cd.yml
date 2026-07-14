@@ -9,6 +9,10 @@ on:
       - $default-branch
   workflow_dispatch:
 
+# Store the Docker Hub username as a repository VARIABLE named
+# DOCKERHUB_USERNAME (Settings > Secrets and variables > Actions > Variables),
+# not as a secret. Secret values are masked, so if the username doubles as the
+# image namespace the runner drops every job output containing it.
 jobs:
   pipeline:
     # actions: read is required by the resolve-actions-version lookup inside

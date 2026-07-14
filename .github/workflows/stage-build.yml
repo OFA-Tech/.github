@@ -125,8 +125,11 @@ on:
         required: true
       SONAR_PROJECT_KEY:
         required: true
+      # Prefer the DOCKERHUB_USERNAME repository *variable* over this secret:
+      # a username stored as a secret gets masked, and job outputs containing
+      # it (image name, namespace, tags) are silently dropped by the runner.
       DOCKERHUB_USERNAME:
-        required: true
+        required: false
       DOCKERHUB_TOKEN:
         required: true
 
@@ -188,7 +191,7 @@ jobs:
 
       - name: Run Sonar scan action
         if: ${{ inputs.run-sonar }}
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -246,5 +249,5 @@ jobs:
           environment: ${{ inputs.docker-image-environment }}
           dockerfile-path: ${{ inputs.dockerfile-path }}
           working-directory: ${{ inputs.working-directory }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || vars.DOCKERHUB_USERNAME }}
           token: ${{ secrets.DOCKERHUB_TOKEN }}
