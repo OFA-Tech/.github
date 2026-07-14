@@ -5,9 +5,29 @@
 Within this repository, workflows call each other with local relative paths
 (`uses: ./.github/workflows/stage-*.yml`), so every stage runs from the same
 commit as the `ci-cd.yml` that was called. Jobs that need this repository's
-actions check the repo out into `.ofa-tech-actions/` (pinned to
-`github.job_workflow_sha`, falling back to the default branch) and reference
-the actions as `./.ofa-tech-actions/actions/...`.
+actions run a single bootstrap step:
+
+```yaml
+- name: Checkout OFA-Tech actions
+  uses: OFA-Tech/.github/actions/setup/ofa-actions@main
+```
+
+`actions/setup/ofa-actions` (composite) resolves the exact commit of
+`OFA-Tech/.github` the run references — via
+`actions/github/resolve-actions-version`, a TypeScript action that queries
+the workflow-run API's `referenced_workflows` — and checks the repo out into
+`.ofa-tech-actions/` at that commit, so `./.ofa-tech-actions/actions/...`
+references always match the branch/tag the consumer called the reusable
+workflow with (falling back to `main` when nothing is referenced).
+`github.job_workflow_sha` is not used because it evaluates empty on nested
+reusable-workflow calls.
+
+Notes:
+
+- Jobs using the bootstrap need `actions: read` permission for the API
+  lookup (callers with an explicit `permissions:` block must grant it too).
+- The two bootstrap actions are the only ones referenced remotely and are
+  pinned to `@main`; changes to them take effect only after merging to main.
 
 ## Reusable workflow: `.github/workflows/ci-cd.yml`
 

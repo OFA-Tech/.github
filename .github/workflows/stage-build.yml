@@ -136,6 +136,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
 
     steps:
       - name: Checkout
@@ -143,15 +144,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Local actions resolve against the job workspace, so check this
-      # repository out next to the consumer code at the same ref this
-      # reusable workflow was called with (falls back to the default branch).
+      # Resolves which version of OFA-Tech/.github this run references and
+      # checks it out for the local `./.ofa-tech-actions` action references.
+      # The bootstrap action itself is pinned to main (see its action.yml).
       - name: Checkout OFA-Tech actions
-        uses: actions/checkout@v6
-        with:
-          repository: OFA-Tech/.github
-          ref: ${{ github.job_workflow_sha }}
-          path: .ofa-tech-actions
+        uses: OFA-Tech/.github/actions/setup/ofa-actions@main
 
       - name: Resolve language defaults
         id: defaults
@@ -226,17 +223,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+      actions: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Resolves which version of OFA-Tech/.github this run references and
+      # checks it out for the local `./.ofa-tech-actions` action references.
+      # The bootstrap action itself is pinned to main (see its action.yml).
       - name: Checkout OFA-Tech actions
-        uses: actions/checkout@v6
-        with:
-          repository: OFA-Tech/.github
-          ref: ${{ github.job_workflow_sha }}
-          path: .ofa-tech-actions
+        uses: OFA-Tech/.github/actions/setup/ofa-actions@main
 
       - name: Build and push docker image
         id: docker

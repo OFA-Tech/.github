@@ -41,22 +41,22 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
 
         removed_container="false"
         removed_image="false"
 
         if [ -n "${{ inputs.container }}" ]; then
           if docker ps -a --format '{{.Names}}' | grep -Fxq "${{ inputs.container }}" || docker ps -a --format '{{.ID}}' | grep -Fxq "${{ inputs.container }}"; then
-            if docker_is_true "${{ inputs.stop-first }}"; then
+            if common_is_true "${{ inputs.stop-first }}"; then
               docker stop "${{ inputs.container }}" >/dev/null 2>&1 || true
             fi
 
             rm_args=(docker rm)
-            if docker_is_true "${{ inputs.force }}"; then
+            if common_is_true "${{ inputs.force }}"; then
               rm_args+=(-f)
             fi
-            if docker_is_true "${{ inputs.remove-volumes }}"; then
+            if common_is_true "${{ inputs.remove-volumes }}"; then
               rm_args+=(-v)
             fi
 
@@ -69,7 +69,7 @@ runs:
         if [ -n "${{ inputs.image }}" ]; then
           if docker image inspect "${{ inputs.image }}" >/dev/null 2>&1; then
             rmi_args=(docker rmi)
-            if docker_is_true "${{ inputs.force }}"; then
+            if common_is_true "${{ inputs.force }}"; then
               rmi_args+=(-f)
             fi
             rmi_args+=("${{ inputs.image }}")
@@ -78,7 +78,7 @@ runs:
           fi
         fi
 
-        if docker_is_true "${{ inputs.prune-dangling }}"; then
+        if common_is_true "${{ inputs.prune-dangling }}"; then
           docker image prune -f
         fi
 

@@ -23,6 +23,27 @@ Installs runtime/toolchain using upstream setup actions:
 ### `actions/run-command`
 Executes arbitrary command in optional working directory (`bash`, strict mode enabled).
 
+### `actions/setup/ofa-actions` (composite, bootstrap)
+Resolves which version of `OFA-Tech/.github` the current run references (via
+`actions/github/resolve-actions-version`) and checks it out into
+`.ofa-tech-actions/` at that exact commit, so local
+`./.ofa-tech-actions/actions/...` references match the ref the reusable
+workflows were called with. Must be referenced remotely
+(`OFA-Tech/.github/actions/setup/ofa-actions@main`) since it runs before any
+checkout exists. Requires `actions: read`. Outputs: `ref`, `matched`.
+
+---
+
+## GitHub actions
+
+### `actions/github/resolve-actions-version` (Node 20)
+Uses the TypeScript bundle (`dist/github-resolve-actions-version/index.js`)
+to query the workflow-run API's `referenced_workflows` and output the commit
+SHA (`ref` output) of the shared actions repository this run was called
+with; `matched=false` with the `fallback-ref` (default `main`) when the run
+references nothing from it. Exists because `github.job_workflow_sha` is
+empty on nested reusable-workflow calls.
+
 ---
 
 ## Docker actions

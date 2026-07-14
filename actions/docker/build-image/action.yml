@@ -108,7 +108,7 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
 
         resolved_username="$(docker_resolve_username "${{ inputs.username }}" "$ORG_DOCKER_USERNAME_SECRET" "$ORG_DOCKER_USERNAME" "")"
         if [ -z "$resolved_username" ]; then
@@ -136,25 +136,16 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
 
         cmd=(docker build -f "${{ inputs.dockerfile-path }}" -t "${{ steps.meta.outputs.image-version-tag }}")
 
-        if docker_is_true "${{ inputs.build-no-cache }}"; then
+        if common_is_true "${{ inputs.build-no-cache }}"; then
           cmd+=(--no-cache)
         fi
 
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            cmd+=(--build-arg "$line")
-          fi
-        done <<< "${{ inputs.build-args }}"
-
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            cmd+=(--label "$line")
-          fi
-        done <<< "${{ inputs.labels }}"
+        docker_append_lines cmd --build-arg "${{ inputs.build-args }}"
+        docker_append_lines cmd --label "${{ inputs.labels }}"
 
         cmd+=("${{ inputs.working-directory }}")
         "${cmd[@]}"

@@ -17,6 +17,8 @@ const ACTION_ENTRIES = {
   "portainer-stack-exists": "src/application/portainer/actions/stack-exists-action.ts",
   "portainer-rollback": "src/application/portainer/actions/rollback-action.ts",
   "docker-metadata": "src/application/docker/actions/docker-metadata-action.ts",
+  "github-resolve-actions-version":
+    "src/application/github/actions/resolve-actions-version-action.ts",
 };
 
 await rm(join(root, "dist"), { recursive: true, force: true });

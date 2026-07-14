@@ -1,0 +1,42 @@
+name: Resolve OFA-Tech Actions Version
+description: >-
+  Resolve which version (commit) of the shared actions repository the current
+  workflow run references, via the workflow-run API's referenced_workflows.
+  Use before checking the actions repository out — github.job_workflow_sha is
+  empty on nested reusable-workflow calls and cannot be trusted.
+
+inputs:
+  token:
+    description: Token for the workflow-run API lookup (needs actions:read on the run's repository)
+    required: false
+    default: ${{ github.token }}
+  actions-repository:
+    description: owner/repo of the shared actions repository to resolve
+    required: false
+    default: OFA-Tech/.github
+  fallback-ref:
+    description: Ref returned when the run references nothing from the actions repository
+    required: false
+    default: main
+  run-repository:
+    description: owner/repo the workflow run lives in (defaults to the current repository)
+    required: false
+    default: ""
+  run-id:
+    description: Workflow run id to inspect (defaults to the current run)
+    required: false
+    default: ""
+
+outputs:
+  ref:
+    description: Commit SHA (preferred) or ref to check the actions repository out at
+  matched:
+    description: Whether the version came from the run's referenced workflows (false = fallback)
+
+# Logic lives in TypeScript. See the entrypoint at
+# src/application/github/actions/resolve-actions-version-action.ts and the
+# GitHub application area (use case + API repository under
+# src/infrastructure/data). The bundle is committed under dist/.
+runs:
+  using: node20
+  main: ../../../dist/github-resolve-actions-version/index.js

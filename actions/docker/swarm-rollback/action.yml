@@ -21,19 +21,10 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
+        docker_swarm_require_active
 
-        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
-          echo "Docker Swarm is not active on this runner." >&2
-          exit 1
-        fi
-
-        detach_flag="true"
-        if docker_is_true "${{ inputs.detach }}"; then
-          detach_flag="true"
-        else
-          detach_flag="false"
-        fi
+        detach_flag="$(common_bool "${{ inputs.detach }}")"
 
         docker service rollback --detach "$detach_flag" "${{ inputs.service-name }}"
-        echo "service-name=${{ inputs.service-name }}" >> "$GITHUB_OUTPUT"
+        common_write_output "service-name" "${{ inputs.service-name }}"

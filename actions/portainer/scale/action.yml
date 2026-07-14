@@ -39,48 +39,26 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/portainer/common.sh"
 
-        PORTAINER_URL="${{ inputs.portainer-url }}"
-        PORTAINER_URL="${PORTAINER_URL%/}"
+        PORTAINER_URL="$(portainer_normalize_url "${{ inputs.portainer-url }}")"
         API_KEY="${{ inputs.api-key }}"
         ENDPOINT_ID="${{ inputs.endpoint-id }}"
         STACK_ID="${{ inputs.stack-id }}"
         STACK_FILE_CONTENT="${{ inputs.stack-file-content }}"
-        PRUNE="${{ inputs.prune }}"
-        REPULL="${{ inputs.repull-image-and-redeploy }}"
 
-        fail() {
-          echo "$1" >&2
-          exit 1
-        }
+        common_require_cmd curl
+        common_require_cmd jq
 
-        require_cmd() {
-          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
-        }
-
-        is_true() {
-          case "${1:-}" in
-            true|TRUE|1|yes|YES|on|ON) return 0 ;;
-            *) return 1 ;;
-          esac
-        }
-
-        require_cmd curl
-        require_cmd jq
-
-        [[ -n "$STACK_FILE_CONTENT" ]] || fail "stack-file-content is required"
+        [[ -n "$STACK_FILE_CONTENT" ]] || common_fail "stack-file-content is required"
 
         PAYLOAD="$(jq -cn \
           --arg content "$STACK_FILE_CONTENT" \
-          --argjson prune "$(is_true "$PRUNE" && echo true || echo false)" \
-          --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
+          --argjson prune "$(common_bool "${{ inputs.prune }}")" \
+          --argjson repull "$(common_bool "${{ inputs.repull-image-and-redeploy }}")" \
           '{StackFileContent:$content, Prune:$prune, RepullImageAndRedeploy:$repull}')"
 
-        curl -fsSL -X PUT \
-          -H "X-API-Key: ${API_KEY}" \
-          -H "Content-Type: application/json" \
-          --data "$PAYLOAD" \
-          "${PORTAINER_URL}/api/stacks/${STACK_ID}?endpointId=${ENDPOINT_ID}" \
-          >/dev/null
+        portainer_api_put "$PORTAINER_URL" "$API_KEY" \
+          "/api/stacks/${STACK_ID}?endpointId=${ENDPOINT_ID}" "$PAYLOAD" >/dev/null
 
-        echo "stack-id=${STACK_ID}" >> "$GITHUB_OUTPUT"
+        common_write_output "stack-id" "$STACK_ID"

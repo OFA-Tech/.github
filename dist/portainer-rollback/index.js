@@ -27931,6 +27931,8 @@ function defaultFromRef(refName) {
 
 
 
+
+
 ;// CONCATENATED MODULE: ./src/application/portainer/use-cases/find-stack.ts
 /**
  * Use case: locate a stack by id (direct) or by name within an endpoint.
@@ -28830,12 +28832,120 @@ function createImageMetadataResolver(credentials, env = process.env) {
     });
 }
 
+;// CONCATENATED MODULE: ./src/application/github/use-cases/resolve-actions-version.ts
+/**
+ * Use case: determine which version of the shared actions repository this
+ * workflow run was called with.
+ *
+ * `github.job_workflow_sha` evaluates empty on nested reusable-workflow
+ * calls, so instead the run's `referenced_workflows` metadata is queried and
+ * the entry belonging to the actions repository selected. Falls back to a
+ * caller-supplied ref (normally `main`) when the run references nothing from
+ * that repository.
+ */
+
+class resolve_actions_version_ResolveActionsVersionUseCase {
+    runs;
+    constructor(runs) {
+        this.runs = runs;
+    }
+    async execute(query) {
+        if (!query.runRepository || !query.runId) {
+            throw new InvalidInputError("run repository and run id are required");
+        }
+        if (!query.actionsRepository) {
+            throw new InvalidInputError("actions repository is required");
+        }
+        const referenced = await this.runs.referencedWorkflows(query.runRepository, query.runId);
+        const match = referenced.find((workflow) => workflow.belongsTo(query.actionsRepository) && workflow.checkoutRef);
+        if (!match) {
+            return { ref: query.fallbackRef, matched: false };
+        }
+        return { ref: match.checkoutRef, matched: true };
+    }
+}
+
+;// CONCATENATED MODULE: ./src/application/github/use-cases/index.ts
+
+
+;// CONCATENATED MODULE: ./src/infrastructure/data/api-repositories/github/client.ts
+/**
+ * Named API client for the GitHub REST API.
+ *
+ * Owns only what is GitHub-specific — the base URL (honouring
+ * `GITHUB_API_URL` so GHES works), Bearer authentication, the API version
+ * header, secret masking, and the fact that its lookups are idempotent —
+ * and delegates all transport mechanics to the {@link RestApiAccess} port.
+ */
+
+
+class client_GitHubClient {
+    baseUrl;
+    token;
+    api;
+    constructor(options, api) {
+        this.baseUrl = (options.baseUrl ??
+            process.env.GITHUB_API_URL ??
+            "https://api.github.com").replace(/\/+$/, "");
+        this.token = options.token;
+        this.api = api ?? new FetchRestApiAccess({ name: "GitHub" });
+        logger.mask(this.token);
+    }
+    async get(path, query) {
+        const response = await this.api.request({
+            method: "GET",
+            url: `${this.baseUrl}${path}`,
+            query,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            authentication: { scheme: "Bearer", value: this.token },
+            retryable: true,
+        });
+        return response.data;
+    }
+}
+
+;// CONCATENATED MODULE: ./src/infrastructure/data/api-repositories/github/workflow-run-repository.ts
+/**
+ * GitHub Actions API implementation of the {@link WorkflowRunRepository}
+ * port. Maps the raw run payload into domain {@link ReferencedWorkflow}
+ * value objects.
+ */
+
+class workflow_run_repository_GitHubWorkflowRunRepository {
+    client;
+    constructor(client) {
+        this.client = client;
+    }
+    async referencedWorkflows(repository, runId) {
+        const run = await this.client.get(`/repos/${repository}/actions/runs/${runId}`);
+        return (run.referenced_workflows ?? [])
+            .filter((entry) => entry.path)
+            .map((entry) => new ReferencedWorkflow(entry.path ?? "", entry.sha ?? "", entry.ref ?? ""));
+    }
+}
+
+;// CONCATENATED MODULE: ./src/infrastructure/cross-cutting/dependency-injections/github.ts
+/**
+ * Composition root for the GitHub bounded context: wires the HTTP adapter
+ * into the domain port and hands back ready-to-run use cases.
+ */
+
+
+
+function createGitHubWorkflowRuns(options) {
+    const repository = new GitHubWorkflowRunRepository(new GitHubClient(options));
+    return {
+        resolveActionsVersion: new ResolveActionsVersionUseCase(repository),
+    };
+}
+
 ;// CONCATENATED MODULE: ./src/infrastructure/cross-cutting/dependency-injections/index.ts
 /**
  * Composition root: the only place infrastructure implementations are wired
  * into domain/application ports. Action entrypoints import factories from
  * here and never construct adapters directly.
  */
+
 
 
 

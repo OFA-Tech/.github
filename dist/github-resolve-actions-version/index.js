@@ -27793,16 +27793,16 @@ function normalizeComponent(value) {
 }
 function validateComponent(component, label) {
     if (!component) {
-        throw new errors_InvalidInputError(`Resolved ${label} is empty.`);
+        throw new InvalidInputError(`Resolved ${label} is empty.`);
     }
     if (component.includes("/")) {
-        throw new errors_InvalidInputError(`Resolved ${label} '${component}' must not contain '/'.`);
+        throw new InvalidInputError(`Resolved ${label} '${component}' must not contain '/'.`);
     }
     if (!COMPONENT_GRAMMAR.test(component)) {
-        throw new errors_InvalidInputError(`Resolved ${label} '${component}' is invalid. Allowed: lowercase letters, numbers, '.', '_' and '-'.`);
+        throw new InvalidInputError(`Resolved ${label} '${component}' is invalid. Allowed: lowercase letters, numbers, '.', '_' and '-'.`);
     }
 }
-class ImageCoordinates {
+class image_coordinates_ImageCoordinates {
     registry;
     account;
     repository;
@@ -27822,7 +27822,7 @@ class ImageCoordinates {
         validateComponent(normalizedAccount, "Docker account");
         const normalizedRepository = normalizeComponent(repository);
         validateComponent(normalizedRepository, "Docker image name");
-        return new ImageCoordinates(registry.toLowerCase(), normalizedAccount, normalizedRepository);
+        return new image_coordinates_ImageCoordinates(registry.toLowerCase(), normalizedAccount, normalizedRepository);
     }
     /** Full image path without a tag; Docker Hub omits the registry prefix. */
     get imagePath() {
@@ -27837,95 +27837,6 @@ class ImageCoordinates {
     }
 }
 
-;// CONCATENATED MODULE: ./src/domain/models/semver-date-tag.ts
-/**
- * Value object for the organization's image tag scheme:
- * `[dev-|stg-]<major>.<minor>.<point>-<yyyymmdd>`.
- *
- * Owns parsing of existing registry tags and the baseline math previously in
- * `docker_fetch_latest_semver`: the highest `major.minor.point` triplet seen
- * plus the highest point value across every matching tag.
- */
-const TAG_GRAMMAR = /^(dev-|stg-)?([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]{8})$/;
-class SemverDateTag {
-    prefix;
-    major;
-    minor;
-    point;
-    date;
-    constructor(prefix, major, minor, point, date) {
-        this.prefix = prefix;
-        this.major = major;
-        this.minor = minor;
-        this.point = point;
-        this.date = date;
-    }
-    /** Parse a registry tag; returns null when it does not follow the scheme. */
-    static parse(tag) {
-        const match = TAG_GRAMMAR.exec(tag);
-        if (!match) {
-            return null;
-        }
-        return new SemverDateTag(match[1] ?? "", Number(match[2]), Number(match[3]), Number(match[4]), match[5]);
-    }
-    static of(prefix, major, minor, point, date) {
-        return new SemverDateTag(prefix, major, minor, point, date);
-    }
-    /** Same version with a different point value (used for collision bumps). */
-    withPoint(point) {
-        return new SemverDateTag(this.prefix, this.major, this.minor, point, this.date);
-    }
-    toString() {
-        return `${this.prefix}${this.major}.${this.minor}.${this.point}-${this.date}`;
-    }
-}
-function latestSemverBaseline(tags) {
-    let major = 0;
-    let minor = 0;
-    let point = 0;
-    let maxPoint = 0;
-    for (const raw of tags) {
-        const tag = SemverDateTag.parse(raw);
-        if (!tag) {
-            continue;
-        }
-        if (tag.major > major ||
-            (tag.major === major && tag.minor > minor) ||
-            (tag.major === major && tag.minor === minor && tag.point > point)) {
-            major = tag.major;
-            minor = tag.minor;
-            point = tag.point;
-        }
-        if (tag.point > maxPoint) {
-            maxPoint = tag.point;
-        }
-    }
-    return { major, minor, maxPoint };
-}
-
-;// CONCATENATED MODULE: ./src/domain/models/version-bump.ts
-/** Classify a (lowercased) source branch name into a bump kind. */
-function bumpForBranch(sourceBranch) {
-    if (sourceBranch.startsWith("feature/") || sourceBranch.startsWith("feat/")) {
-        return "major";
-    }
-    if (sourceBranch.startsWith("fix/") || sourceBranch.startsWith("hotfix/")) {
-        return "minor";
-    }
-    return "patch";
-}
-/** Apply a bump to the published baseline, yielding the next version triplet. */
-function nextVersion(baseline, bump) {
-    const point = baseline.maxPoint + 1;
-    if (bump === "major") {
-        return { major: baseline.major + 1, minor: 0, point };
-    }
-    if (bump === "minor") {
-        return { major: baseline.major, minor: baseline.minor + 1, point };
-    }
-    return { major: baseline.major, minor: baseline.minor, point };
-}
-
 ;// CONCATENATED MODULE: ./src/domain/models/build-environment.ts
 /**
  * Value object for the build environment a docker image is produced for.
@@ -27936,7 +27847,7 @@ function nextVersion(baseline, bump) {
  * prefix (`dev-`, `stg-`, or none for production).
  */
 
-class BuildEnvironment {
+class build_environment_BuildEnvironment {
     name;
     tagPrefix;
     constructor(
@@ -27954,17 +27865,17 @@ class BuildEnvironment {
             case "development":
             case "develop":
             case "dev":
-                return new BuildEnvironment("development", "dev-");
+                return new build_environment_BuildEnvironment("development", "dev-");
             case "staging":
             case "stage":
             case "stg":
-                return new BuildEnvironment("staging", "stg-");
+                return new build_environment_BuildEnvironment("staging", "stg-");
             case "production":
             case "prod":
             case "":
-                return new BuildEnvironment("production", "");
+                return new build_environment_BuildEnvironment("production", "");
             default:
-                throw new errors_InvalidInputError(`Unsupported docker environment '${value}'. Use development, staging or production.`);
+                throw new InvalidInputError(`Unsupported docker environment '${value}'. Use development, staging or production.`);
         }
     }
 }
@@ -27980,6 +27891,45 @@ function defaultFromRef(refName) {
             return "staging";
         default:
             return "production";
+    }
+}
+
+;// CONCATENATED MODULE: ./src/domain/models/referenced-workflow.ts
+/**
+ * Value object for one entry of a workflow run's `referenced_workflows` —
+ * a reusable workflow the run was resolved against, with the exact commit
+ * (`sha`) and, when called by branch or tag, the symbolic `ref`.
+ */
+class ReferencedWorkflow {
+    path;
+    sha;
+    ref;
+    constructor(
+    /** Full workflow path, e.g. `owner/repo/.github/workflows/ci.yml@refs/heads/main`. */
+    path, 
+    /** Commit SHA the workflow file was resolved to. */
+    sha = "", 
+    /** Symbolic ref the workflow was called with, e.g. `refs/heads/main`. */
+    ref = "") {
+        this.path = path;
+        this.sha = sha;
+        this.ref = ref;
+    }
+    /** The `owner/repo` the workflow file lives in. */
+    get repository() {
+        const [owner = "", repo = ""] = this.path.split("/");
+        return owner && repo ? `${owner}/${repo}` : "";
+    }
+    /** True when this workflow belongs to the given `owner/repo` (case-insensitive). */
+    belongsTo(repository) {
+        return this.repository.toLowerCase() === repository.trim().toLowerCase();
+    }
+    /**
+     * Best ref to check the repository out at: the exact commit when known,
+     * otherwise the symbolic ref; empty when neither is available.
+     */
+    get checkoutRef() {
+        return this.sha || this.ref;
     }
 }
 
@@ -28640,14 +28590,14 @@ const external_node_path_namespaceObject = require("node:path");
 
 class file_system_access_NodeFileSystemAccess {
     resolvePath(baseDir, filePath) {
-        return (0,external_node_path_namespaceObject.isAbsolute)(filePath) ? filePath : (0,external_node_path_namespaceObject.join)(baseDir, filePath);
+        return isAbsolute(filePath) ? filePath : join(baseDir, filePath);
     }
     readText(filePath) {
         try {
-            return (0,external_node_fs_namespaceObject.readFileSync)(filePath, "utf8");
+            return readFileSync(filePath, "utf8");
         }
         catch {
-            throw new errors_InvalidInputError(`File not found: ${filePath}`);
+            throw new InvalidInputError(`File not found: ${filePath}`);
         }
     }
 }
@@ -28692,7 +28642,7 @@ function createStackFileResolver(env = process.env) {
 
 /** Safety bound for the collision loop; the shell version looped unbounded. */
 const MAX_COLLISION_BUMPS = 1000;
-class ResolveImageMetadataUseCase {
+class resolve_image_metadata_ResolveImageMetadataUseCase {
     deps;
     env;
     now;
@@ -28729,7 +28679,7 @@ class ResolveImageMetadataUseCase {
             const published = (await this.deps.tags.tagExists(coordinates, version)) ||
                 (await this.deps.manifests.manifestExists(coordinates.taggedAs(version)));
             if (!published) {
-                logger_logger.info("Resolved image version", {
+                logger.info("Resolved image version", {
                     version,
                     environment: environment.name,
                     sourceBranch,
@@ -28739,7 +28689,7 @@ class ResolveImageMetadataUseCase {
             }
             candidate = candidate.withPoint(candidate.point + 1);
         }
-        throw new errors_PreconditionError(`Unable to find an unpublished version tag for ${coordinates.imagePath} after ${MAX_COLLISION_BUMPS} attempts`);
+        throw new PreconditionError(`Unable to find an unpublished version tag for ${coordinates.imagePath} after ${MAX_COLLISION_BUMPS} attempts`);
     }
     ownerFallback() {
         const owner = (this.env.GITHUB_REPOSITORY_OWNER ?? "")
@@ -28780,7 +28730,7 @@ function formatUtcDate(date) {
  */
 
 
-class DockerHubClient {
+class client_DockerHubClient {
     baseUrl;
     username;
     token;
@@ -28789,8 +28739,8 @@ class DockerHubClient {
         this.baseUrl = (options.baseUrl ?? "https://hub.docker.com/v2").replace(/\/+$/, "");
         this.username = options.username;
         this.token = options.token;
-        this.api = api ?? new rest_api_access_FetchRestApiAccess({ name: "Docker Hub" });
-        logger_logger.mask(this.token);
+        this.api = api ?? new FetchRestApiAccess({ name: "Docker Hub" });
+        logger.mask(this.token);
     }
     /** Tag queries only make sense with credentials; callers degrade without them. */
     get hasCredentials() {
@@ -28811,43 +28761,8 @@ class DockerHubClient {
     }
 }
 
-;// CONCATENATED MODULE: ./src/infrastructure/data/api-repositories/docker-hub/tag-repository.ts
-class DockerHubTagRepository {
-    client;
-    constructor(client) {
-        this.client = client;
-    }
-    async listTags(coordinates) {
-        if (!this.client.hasCredentials) {
-            return [];
-        }
-        try {
-            const list = await this.client.get(`/repositories/${coordinates.account}/${coordinates.repository}/tags`, { page_size: 100 });
-            return (list.results ?? [])
-                .map((tag) => tag.name ?? "")
-                .filter((name) => name !== "");
-        }
-        catch {
-            // Best effort: an unreachable registry means "no baseline", not a failure.
-            return [];
-        }
-    }
-    async tagExists(coordinates, tag) {
-        if (!this.client.hasCredentials) {
-            return false;
-        }
-        try {
-            await this.client.get(`/repositories/${coordinates.account}/${coordinates.repository}/tags/${tag}/`);
-            return true;
-        }
-        catch {
-            return false;
-        }
-    }
-}
-
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
-var exec = __nccwpck_require__(5236);
+var lib_exec = __nccwpck_require__(5236);
 ;// CONCATENATED MODULE: ./src/infrastructure/data/command-line-repository/docker-manifest-access.ts
 /**
  * CLI adapter implementing the {@link ImageManifestAccess} domain port with
@@ -28857,10 +28772,10 @@ var exec = __nccwpck_require__(5236);
  * (missing docker binary, auth, unknown manifest) reports "does not exist".
  */
 
-class DockerCliManifestAccess {
+class docker_manifest_access_DockerCliManifestAccess {
     async manifestExists(imageReference) {
         try {
-            const exitCode = await (0,exec.exec)("docker", ["manifest", "inspect", imageReference], {
+            const exitCode = await exec("docker", ["manifest", "inspect", imageReference], {
                 silent: true,
                 ignoreReturnCode: true,
             });
@@ -28886,10 +28801,10 @@ class DockerCliManifestAccess {
  */
 
 
-class GitHubSourceBranchAccess {
+class source_branch_access_GitHubSourceBranchAccess {
     env;
     files;
-    constructor(env = process.env, files = new file_system_access_NodeFileSystemAccess()) {
+    constructor(env = process.env, files = new NodeFileSystemAccess()) {
         this.env = env;
         this.files = files;
     }
@@ -28923,7 +28838,7 @@ class GitHubSourceBranchAccess {
     }
     async lastCommitSubject() {
         try {
-            const output = await (0,exec.getExecOutput)("git", ["log", "-1", "--pretty=%s"], {
+            const output = await getExecOutput("git", ["log", "-1", "--pretty=%s"], {
                 silent: true,
                 ignoreReturnCode: true,
             });
@@ -28968,17 +28883,17 @@ function createImageMetadataResolver(credentials, env = process.env) {
  * that repository.
  */
 
-class resolve_actions_version_ResolveActionsVersionUseCase {
+class ResolveActionsVersionUseCase {
     runs;
     constructor(runs) {
         this.runs = runs;
     }
     async execute(query) {
         if (!query.runRepository || !query.runId) {
-            throw new InvalidInputError("run repository and run id are required");
+            throw new errors_InvalidInputError("run repository and run id are required");
         }
         if (!query.actionsRepository) {
-            throw new InvalidInputError("actions repository is required");
+            throw new errors_InvalidInputError("actions repository is required");
         }
         const referenced = await this.runs.referencedWorkflows(query.runRepository, query.runId);
         const match = referenced.find((workflow) => workflow.belongsTo(query.actionsRepository) && workflow.checkoutRef);
@@ -29003,7 +28918,7 @@ class resolve_actions_version_ResolveActionsVersionUseCase {
  */
 
 
-class client_GitHubClient {
+class GitHubClient {
     baseUrl;
     token;
     api;
@@ -29012,8 +28927,8 @@ class client_GitHubClient {
             process.env.GITHUB_API_URL ??
             "https://api.github.com").replace(/\/+$/, "");
         this.token = options.token;
-        this.api = api ?? new FetchRestApiAccess({ name: "GitHub" });
-        logger.mask(this.token);
+        this.api = api ?? new rest_api_access_FetchRestApiAccess({ name: "GitHub" });
+        logger_logger.mask(this.token);
     }
     async get(path, query) {
         const response = await this.api.request({
@@ -29035,7 +28950,7 @@ class client_GitHubClient {
  * value objects.
  */
 
-class workflow_run_repository_GitHubWorkflowRunRepository {
+class GitHubWorkflowRunRepository {
     client;
     constructor(client) {
         this.client = client;
@@ -29093,9 +29008,9 @@ function getString(name, fallback = "") {
 }
 /** Read a required string input; throw {@link InvalidInputError} when empty. */
 function getRequired(name) {
-    const value = core.getInput(name, { required: false }).trim();
+    const value = lib_core.getInput(name, { required: false }).trim();
     if (value === "") {
-        throw new InvalidInputError(`Input '${name}' is required`);
+        throw new errors_InvalidInputError(`Input '${name}' is required`);
     }
     return value;
 }
@@ -29199,53 +29114,41 @@ async function runAction(options, body) {
 
 
 
-;// CONCATENATED MODULE: ./src/application/docker/actions/docker-metadata-action.ts
+;// CONCATENATED MODULE: ./src/application/github/actions/resolve-actions-version-action.ts
 /**
- * Action entrypoint: Docker Image Metadata.
+ * Action entrypoint: Resolve OFA-Tech Actions Version.
  *
- * Orchestration only — input parsing and the output contract for the
- * metadata step of `actions/docker/build-image` (and the standalone
- * `actions/docker/metadata` action). Resolution rules live in `src/domain`,
- * the use case in `../use-cases`, side effects in `src/infrastructure/data`;
- * wiring comes from the dependency-injection factories.
+ * Thin orchestration around the resolve-actions-version use case: read the
+ * run coordinates from the runner environment, resolve which version of the
+ * actions repository this run references, and publish it as the `ref`
+ * output for a follow-up checkout step.
  */
 
 
-async function resolveMetadata() {
-    const registry = getString("registry", "docker.io");
-    const namespace = getString("namespace");
-    const repository = getString("repository");
-    const tag = getString("tag");
-    const environment = getString("environment");
-    const token = getString("token");
-    // Same defaulting the composite previously did in shell: an explicit
-    // username wins, otherwise the repository owner is used for Docker Hub
-    // lookups and as an account candidate.
-    const username = getString("username") || (process.env.GITHUB_REPOSITORY_OWNER ?? "").toLowerCase();
-    logger_logger.info("Resolving docker image metadata", {
-        registry,
-        username,
-        namespace: namespace || username,
+async function resolveActionsVersion() {
+    const token = getRequired("token");
+    const actionsRepository = getString("actions-repository", "OFA-Tech/.github");
+    const fallbackRef = getString("fallback-ref", "main");
+    const runRepository = getString("run-repository", process.env.GITHUB_REPOSITORY ?? "");
+    const runId = getString("run-id", process.env.GITHUB_RUN_ID ?? "");
+    const github = createGitHubWorkflowRuns({ token });
+    const result = await github.resolveActionsVersion.execute({
+        runRepository,
+        runId,
+        actionsRepository,
+        fallbackRef,
     });
-    const metadata = await createImageMetadataResolver({ username, token }).execute({
-        registry,
-        namespace,
-        repository,
-        tag,
-        environment,
-        username,
+    logger_logger.info("Resolved actions version", {
+        actionsRepository,
+        ref: result.ref,
+        matched: result.matched,
     });
     setOutputs({
-        registry: metadata.registry,
-        account: metadata.account,
-        "image-name": metadata.imageName,
-        image: metadata.image,
-        version: metadata.version,
-        "image-version-tag": metadata.imageVersionTag,
-        "image-latest-tag": metadata.imageLatestTag,
+        ref: result.ref,
+        matched: result.matched,
     });
 }
-void runAction({ name: "docker-metadata" }, resolveMetadata);
+void runAction({ name: "github-resolve-actions-version" }, resolveActionsVersion);
 
 })();
 
