@@ -38,5 +38,5 @@ outputs:
 # GitHub application area (use case + API repository under
 # src/infrastructure/data). The bundle is committed under dist/.
 runs:
-  using: node20
+  using: node24
   main: ../../../dist/github-resolve-actions-version/index.js

@@ -39,5 +39,5 @@ outputs:
 # RollbackStackUseCase in src/application/portainer/use-cases. The bundle is
 # committed under dist/.
 runs:
-  using: node20
+  using: node24
   main: ../../../dist/portainer-rollback/index.js

@@ -52,5 +52,5 @@ outputs:
 # entrypoint at src/application/docker/actions/docker-metadata-action.ts and
 # the Docker application area. The bundle is committed under dist/.
 runs:
-  using: node20
+  using: node24
   main: ../../../dist/docker-metadata/index.js

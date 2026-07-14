@@ -61,9 +61,9 @@ If **all** answers are "no" — it is shell:
 .
 ├── .github/workflows/      # Reusable workflows (workflow_call) — orchestration glue
 ├── actions/                # Action manifests (action.yml) — the public contract
-│   ├── portainer/          #   node20 actions (deploy-update, stack-exists, rollback)
+│   ├── portainer/          #   node24 actions (deploy-update, stack-exists, rollback)
 │   │                       #   → point at dist/ bundles; the rest are shell utilities
-│   ├── docker/             #   metadata → node20 bundle; build/deploy/scale → shell CLI wrappers
+│   ├── docker/             #   metadata → node24 bundle; build/deploy/scale → shell CLI wrappers
 │   ├── setup/, run-command/#   shell actions → language defaults, runtime setup, command runner
 │   └── ssh/                #   shell actions  → third-party action wrappers
 ├── src/                    # TypeScript source, organized as DDD layers
@@ -232,7 +232,7 @@ with `src/`. Always run `npm run build` and commit `dist/` before pushing.
    `void runAction(..., body)`. Reach infrastructure only through the
    `infrastructure/cross-cutting/dependency-injections` factories.
 2. Add a manifest at `actions/<group>/<name>/action.yml` with
-   `runs: { using: node20, main: ../../../dist/<name>/index.js }`.
+   `runs: { using: node24, main: ../../../dist/<name>/index.js }`.
 3. Register the entry in `scripts/build/bundle.mjs`.
 4. `npm run all`, then commit `src/`, `dist/`, and `action.yml` together.
 

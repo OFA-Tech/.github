@@ -44,5 +44,5 @@ outputs:
 # the Portainer API repository under src/infrastructure/data/api-repositories.
 # The bundle is committed under dist/.
 runs:
-  using: node20
+  using: node24
   main: ../../../dist/portainer-stack-exists/index.js

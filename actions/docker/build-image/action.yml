@@ -84,6 +84,15 @@ outputs:
 runs:
   using: composite
   steps:
+    # The metadata bundle runs via `run: node` because composite steps cannot
+    # reference the sibling actions/docker/metadata action by relative path.
+    # Self-hosted runners may not have node on PATH, so install it explicitly
+    # (no-op when already provisioned; cached in the runner tool cache).
+    - name: Setup Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: 24
+
     # Metadata resolution (account/repository fallbacks, branch-based version
     # bumping, collision checks) lives in TypeScript — the same bundle behind
     # actions/docker/metadata. Only the docker CLI steps below stay in shell.
