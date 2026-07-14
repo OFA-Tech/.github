@@ -136,6 +136,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
 
     steps:
       - name: Checkout
@@ -143,9 +144,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Resolves which version of OFA-Tech/.github this run references and
+      # checks it out for the local `./.ofa-tech-actions` action references.
+      # The bootstrap action itself is pinned to main (see its action.yml).
+      - name: Checkout OFA-Tech actions
+        uses: OFA-Tech/.github/actions/setup/ofa-actions@main
+
       - name: Resolve language defaults
         id: defaults
-        uses: OFA-Tech/.github/actions/setup/resolve@main
+        uses: ./.ofa-tech-actions/actions/setup/resolve
         with:
           language: ${{ inputs.language }}
           version: ${{ inputs.language-version }}
@@ -153,28 +160,28 @@ jobs:
           build-command: ${{ inputs.build-command }}
 
       - name: Setup runtime
-        uses: OFA-Tech/.github/actions/setup/runtime@main
+        uses: ./.ofa-tech-actions/actions/setup/runtime
         with:
           language: ${{ steps.defaults.outputs.language }}
           version: ${{ steps.defaults.outputs.version }}
           distribution: ${{ steps.defaults.outputs.distribution }}
 
       - name: Build
-        uses: OFA-Tech/.github/actions/run-command@main
+        uses: ./.ofa-tech-actions/actions/run-command
         with:
           command: ${{ steps.defaults.outputs.build-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run unit tests
         if: ${{ inputs.run-unit-tests && (inputs.unit-test-command != '' || steps.defaults.outputs.test-command != '') }}
-        uses: OFA-Tech/.github/actions/run-command@main
+        uses: ./.ofa-tech-actions/actions/run-command
         with:
           command: ${{ inputs.unit-test-command != '' && inputs.unit-test-command || steps.defaults.outputs.test-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run integration tests
         if: ${{ inputs.run-integration-tests && inputs.integration-test-command != '' }}
-        uses: OFA-Tech/.github/actions/run-command@main
+        uses: ./.ofa-tech-actions/actions/run-command
         with:
           command: ${{ inputs.integration-test-command }}
           working-directory: ${{ inputs.working-directory }}
@@ -216,14 +223,21 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+      actions: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Resolves which version of OFA-Tech/.github this run references and
+      # checks it out for the local `./.ofa-tech-actions` action references.
+      # The bootstrap action itself is pinned to main (see its action.yml).
+      - name: Checkout OFA-Tech actions
+        uses: OFA-Tech/.github/actions/setup/ofa-actions@main
+
       - name: Build and push docker image
         id: docker
-        uses: OFA-Tech/.github/actions/docker/build-image@main
+        uses: ./.ofa-tech-actions/actions/docker/build-image
         with:
           registry: ${{ inputs.docker-registry }}
           namespace: ${{ inputs.docker-image-namespace }}

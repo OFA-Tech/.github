@@ -65,19 +65,19 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
 
-        if docker_is_true "${{ inputs.pull }}"; then
+        if common_is_true "${{ inputs.pull }}"; then
           docker pull "${{ inputs.image }}"
         fi
 
         cmd=(docker run)
 
-        if docker_is_true "${{ inputs.detach }}"; then
+        if common_is_true "${{ inputs.detach }}"; then
           cmd+=(--detach)
         fi
 
-        if docker_is_true "${{ inputs.remove-on-exit }}"; then
+        if common_is_true "${{ inputs.remove-on-exit }}"; then
           cmd+=(--rm)
         fi
 
@@ -85,23 +85,9 @@ runs:
           cmd+=(--name "${{ inputs.container-name }}")
         fi
 
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            cmd+=(--publish "$line")
-          fi
-        done <<< "${{ inputs.ports }}"
-
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            cmd+=(--env "$line")
-          fi
-        done <<< "${{ inputs.env }}"
-
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            cmd+=(--volume "$line")
-          fi
-        done <<< "${{ inputs.volumes }}"
+        docker_append_lines cmd --publish "${{ inputs.ports }}"
+        docker_append_lines cmd --env "${{ inputs.env }}"
+        docker_append_lines cmd --volume "${{ inputs.volumes }}"
 
         if [ -n "${{ inputs.network }}" ]; then
           cmd+=(--network "${{ inputs.network }}")
@@ -121,12 +107,6 @@ runs:
 
         cmd+=("${{ inputs.image }}")
 
-        if [ -n "${{ inputs.command }}" ]; then
-          cmd_string=""
-          printf -v cmd_string '%q ' "${cmd[@]}"
-          container_id="$(eval "$cmd_string ${{ inputs.command }}")"
-        else
-          container_id="$("${cmd[@]}")"
-        fi
+        container_id="$(docker_exec_with_extra cmd "${{ inputs.command }}")"
 
-        echo "container-id=$container_id" >> "$GITHUB_OUTPUT"
+        common_write_output "container-id" "$container_id"

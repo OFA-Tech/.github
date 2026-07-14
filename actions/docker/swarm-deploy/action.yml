@@ -59,128 +59,41 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
+        common_require_cmd docker
+        docker_swarm_require_active
 
-        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
-          echo "Docker Swarm is not active on this runner." >&2
-          exit 1
-        fi
+        detach_flag="$(common_bool "${{ inputs.detach }}")"
 
-        with_auth=false
-        if docker_is_true "${{ inputs.with-registry-auth }}"; then
-          with_auth=true
-        fi
-
-        detach_flag="true"
-        if docker_is_true "${{ inputs.detach }}"; then
-          detach_flag="true"
-        else
-          detach_flag="false"
-        fi
-
+        # Update uses the -add variants of the list flags and targets the
+        # service name; create uses the plain flags and targets the image.
         if docker service inspect "${{ inputs.service-name }}" >/dev/null 2>&1; then
-          cmd=(docker service update --image "${{ inputs.image }}" --detach "$detach_flag")
-          if [ "$with_auth" = true ]; then
-            cmd+=(--with-registry-auth)
-          fi
-
-          if [ -n "${{ inputs.replicas }}" ]; then
-            cmd+=(--replicas "${{ inputs.replicas }}")
-          fi
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--publish-add "$line")
-            fi
-          done <<< "${{ inputs.publish-ports }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--mount-add "$line")
-            fi
-          done <<< "${{ inputs.mounts }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--env-add "$line")
-            fi
-          done <<< "${{ inputs.env }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--constraint-add "$line")
-            fi
-          done <<< "${{ inputs.constraints }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--network-add "$line")
-            fi
-          done <<< "${{ inputs.networks }}"
-
-          cmd+=("${{ inputs.service-name }}")
-
-          if [ -n "${{ inputs.extra-options }}" ]; then
-            cmd_string=""
-            printf -v cmd_string '%q ' "${cmd[@]}"
-            eval "$cmd_string ${{ inputs.extra-options }}"
-          else
-            "${cmd[@]}"
-          fi
-
           operation="update"
+          flag_suffix="-add"
+          target="${{ inputs.service-name }}"
+          cmd=(docker service update --image "${{ inputs.image }}" --detach "$detach_flag")
         else
-          cmd=(docker service create --name "${{ inputs.service-name }}" --detach "$detach_flag")
-          if [ "$with_auth" = true ]; then
-            cmd+=(--with-registry-auth)
-          fi
-
-          if [ -n "${{ inputs.replicas }}" ]; then
-            cmd+=(--replicas "${{ inputs.replicas }}")
-          fi
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--publish "$line")
-            fi
-          done <<< "${{ inputs.publish-ports }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--mount "$line")
-            fi
-          done <<< "${{ inputs.mounts }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--env "$line")
-            fi
-          done <<< "${{ inputs.env }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--constraint "$line")
-            fi
-          done <<< "${{ inputs.constraints }}"
-
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              cmd+=(--network "$line")
-            fi
-          done <<< "${{ inputs.networks }}"
-
-          cmd+=("${{ inputs.image }}")
-
-          if [ -n "${{ inputs.extra-options }}" ]; then
-            cmd_string=""
-            printf -v cmd_string '%q ' "${cmd[@]}"
-            eval "$cmd_string ${{ inputs.extra-options }}"
-          else
-            "${cmd[@]}"
-          fi
-
           operation="create"
+          flag_suffix=""
+          target="${{ inputs.image }}"
+          cmd=(docker service create --name "${{ inputs.service-name }}" --detach "$detach_flag")
         fi
+
+        if common_is_true "${{ inputs.with-registry-auth }}"; then
+          cmd+=(--with-registry-auth)
+        fi
+
+        if [ -n "${{ inputs.replicas }}" ]; then
+          cmd+=(--replicas "${{ inputs.replicas }}")
+        fi
+
+        docker_append_lines cmd "--publish${flag_suffix}" "${{ inputs.publish-ports }}"
+        docker_append_lines cmd "--mount${flag_suffix}" "${{ inputs.mounts }}"
+        docker_append_lines cmd "--env${flag_suffix}" "${{ inputs.env }}"
+        docker_append_lines cmd "--constraint${flag_suffix}" "${{ inputs.constraints }}"
+        docker_append_lines cmd "--network${flag_suffix}" "${{ inputs.networks }}"
+
+        cmd+=("$target")
+        docker_exec_with_extra cmd "${{ inputs.extra-options }}"
 
         {
           echo "service-name=${{ inputs.service-name }}"

@@ -37,51 +37,21 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/portainer/common.sh"
 
-        PORTAINER_URL="${{ inputs.portainer-url }}"
-        PORTAINER_URL="${PORTAINER_URL%/}"
+        PORTAINER_URL="$(portainer_normalize_url "${{ inputs.portainer-url }}")"
         API_KEY="${{ inputs.api-key }}"
         STACK_ID="${{ inputs.stack-id }}"
 
-        fail() {
-          echo "$1" >&2
-          exit 1
-        }
+        common_require_cmd curl
+        common_require_cmd jq
 
-        require_cmd() {
-          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
-        }
-
-        resolve_stack_type() {
-          local stack_json="$1"
-          local type_value
-          local swarm_id
-
-          type_value="$(jq -r '.Type // empty' <<<"$stack_json")"
-          swarm_id="$(jq -r '.SwarmID // empty' <<<"$stack_json")"
-
-          if [[ -n "$swarm_id" ]] || [[ "$type_value" == "1" ]]; then
-            printf '%s' "swarm"
-            return
-          fi
-
-          if [[ "$type_value" == "2" ]]; then
-            printf '%s' "standalone"
-            return
-          fi
-
-          printf '%s' "unknown"
-        }
-
-        require_cmd curl
-        require_cmd jq
-
-        STACK_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/stacks/${STACK_ID}")"
+        STACK_JSON="$(portainer_api_get "$PORTAINER_URL" "$API_KEY" "/api/stacks/${STACK_ID}")"
 
         OUT_ID="$(jq -r '.Id // .ID // empty' <<<"$STACK_JSON")"
         OUT_NAME="$(jq -r '.Name // empty' <<<"$STACK_JSON")"
         OUT_ENDPOINT_ID="$(jq -r '.EndpointId // .EndpointID // empty' <<<"$STACK_JSON")"
-        OUT_TYPE="$(resolve_stack_type "$STACK_JSON")"
+        OUT_TYPE="$(portainer_resolve_stack_type "$STACK_JSON")"
         OUT_JSON_SINGLE_LINE="$(jq -c '.' <<<"$STACK_JSON")"
 
         {

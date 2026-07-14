@@ -84,13 +84,20 @@ jobs:
       operation: ${{ steps.run.outputs.operation }}
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Resolves which version of OFA-Tech/.github this run references and
+      # checks it out for the local `./.ofa-tech-actions` action references.
+      # The bootstrap action itself is pinned to main (see its action.yml).
+      - name: Checkout OFA-Tech actions
+        uses: OFA-Tech/.github/actions/setup/ofa-actions@main
+
       - name: Check if stack exists
         id: stack
-        uses: OFA-Tech/.github/actions/portainer/stack-exists@main
+        uses: ./.ofa-tech-actions/actions/portainer/stack-exists
         with:
           portainer-url: ${{ secrets.PORTAINER_URL }}
           api-key: ${{ secrets.PORTAINER_TOKEN }}
@@ -100,7 +107,7 @@ jobs:
       
       - name: Run Portainer operation
         id: run
-        uses: OFA-Tech/.github/actions/portainer/deploy-update@main
+        uses: ./.ofa-tech-actions/actions/portainer/deploy-update
         env:
           WF_OUTPUT_DOCKER_IMAGE: ${{ inputs.full-image-name }}
           WF_OUTPUT_DOCKER_IMAGE_FULL: ${{ inputs.full-image-name }}

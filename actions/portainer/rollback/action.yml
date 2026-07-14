@@ -30,110 +30,14 @@ inputs:
 outputs:
   stack-id:
     description: Rolled back stack ID
-    value: ${{ steps.run.outputs.stack-id }}
   rollback-to:
     description: Version used for rollback
-    value: ${{ steps.run.outputs.rollback-to }}
 
+# Rollback logic (stack lookup, target version math, API error handling)
+# lives in TypeScript. See the entrypoint at
+# src/application/portainer/actions/rollback-action.ts and the
+# RollbackStackUseCase in src/application/portainer/use-cases. The bundle is
+# committed under dist/.
 runs:
-  using: composite
-  steps:
-    - id: run
-      name: Execute Portainer rollback
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        PORTAINER_URL="${{ inputs.portainer-url }}"
-        PORTAINER_URL="${PORTAINER_URL%/}"
-        API_KEY="${{ inputs.api-key }}"
-        ENDPOINT_ID="${{ inputs.endpoint-id }}"
-        STACK_NAME="${{ inputs.stack-name }}"
-        ROLLBACK_TO="${{ inputs.rollback-to }}"
-        PRUNE="${{ inputs.prune }}"
-        REPULL="${{ inputs.repull-image-and-redeploy }}"
-
-        fail() {
-          echo "$1" >&2
-          exit 1
-        }
-
-        require_cmd() {
-          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
-        }
-
-        is_true() {
-          case "${1:-}" in
-            true|TRUE|1|yes|YES|on|ON) return 0 ;;
-            *) return 1 ;;
-          esac
-        }
-
-        api() {
-          local method="$1"
-          local url="$2"
-          local body="${3:-}"
-
-          if [[ -n "$body" ]]; then
-            curl -fsSL -X "$method" \
-              -H "X-API-Key: ${API_KEY}" \
-              -H "Content-Type: application/json" \
-              --data "$body" \
-              "$url"
-          else
-            curl -fsSL -X "$method" \
-              -H "X-API-Key: ${API_KEY}" \
-              -H "Content-Type: application/json" \
-              "$url"
-          fi
-        }
-
-        require_cmd curl
-        require_cmd jq
-
-        STACKS_JSON="$(api GET "${PORTAINER_URL}/api/stacks" "")"
-        STACK_JSON="$(jq -c \
-          --arg name "$STACK_NAME" \
-          --arg endpoint "$ENDPOINT_ID" '
-          map(select((.Name == $name) and (($endpoint == "") or (((.EndpointId // .EndpointID // "") | tostring) == $endpoint))))
-          | first // empty
-        ' <<<"$STACKS_JSON")"
-
-        [[ -n "$STACK_JSON" ]] || fail "Stack '${STACK_NAME}' was not found for endpoint '${ENDPOINT_ID}'"
-
-        STACK_ID="$(jq -r '.Id // .ID // empty' <<<"$STACK_JSON")"
-        [[ -n "$STACK_ID" ]] || fail "Unable to resolve stack ID for stack '${STACK_NAME}'"
-
-        if [[ -z "$ROLLBACK_TO" ]]; then
-          CURRENT_VERSION="$(jq -r '.Version // empty' <<<"$STACK_JSON")"
-          if [[ -z "$CURRENT_VERSION" || "$CURRENT_VERSION" == "null" ]]; then
-            fail "rollback-to is required when stack version is not available in stack inspect response"
-          fi
-
-          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+$ ]]; then
-            fail "Invalid current stack version: ${CURRENT_VERSION}"
-          fi
-
-          if (( CURRENT_VERSION < 2 )); then
-            fail "Stack version ${CURRENT_VERSION} has no previous version to rollback to"
-          fi
-
-          ROLLBACK_TO="$((CURRENT_VERSION - 1))"
-        fi
-
-        if ! [[ "$ROLLBACK_TO" =~ ^[0-9]+$ ]]; then
-          fail "rollback-to must be a positive integer"
-        fi
-
-        PAYLOAD="$(jq -cn \
-          --argjson rollbackTo "$ROLLBACK_TO" \
-          --argjson prune "$(is_true "$PRUNE" && echo true || echo false)" \
-          --argjson repull "$(is_true "$REPULL" && echo true || echo false)" \
-          '{RollbackTo:$rollbackTo, Prune:$prune, RepullImageAndRedeploy:$repull}')"
-
-        api PUT "${PORTAINER_URL}/api/stacks/${STACK_ID}/rollback?endpointId=${ENDPOINT_ID}" "$PAYLOAD" >/dev/null
-
-        {
-          echo "stack-id=${STACK_ID}"
-          echo "rollback-to=${ROLLBACK_TO}"
-        } >> "$GITHUB_OUTPUT"
+  using: node20
+  main: ../../../dist/portainer-rollback/index.js

@@ -23,12 +23,8 @@ runs:
       run: |
         set -euo pipefail
         source "$GITHUB_ACTION_PATH/../../../scripts/docker/common.sh"
-        docker_require_cmd docker
-
-        if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -qi '^active$'; then
-          echo "Docker Swarm is not active on this runner." >&2
-          exit 1
-        fi
+        common_require_cmd docker
+        docker_swarm_require_active
 
         docker service scale "${{ inputs.service-name }}=${{ inputs.replicas }}"
 

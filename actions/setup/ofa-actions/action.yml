@@ -1,0 +1,57 @@
+name: Setup OFA-Tech Actions
+description: >-
+  Resolve which version of the shared actions repository this workflow run
+  references and check it out into the workspace at that exact commit, so
+  local `./.ofa-tech-actions/actions/...` references always match the ref the
+  reusable workflows were called with.
+
+inputs:
+  token:
+    description: Token for the API lookup (needs actions:read) and the checkout
+    required: false
+    default: ${{ github.token }}
+  actions-repository:
+    description: owner/repo of the shared actions repository to resolve and check out
+    required: false
+    default: OFA-Tech/.github
+  fallback-ref:
+    description: Ref used when the run references nothing from the actions repository
+    required: false
+    default: main
+  path:
+    description: Workspace path to check the actions repository out into
+    required: false
+    default: .ofa-tech-actions
+
+outputs:
+  ref:
+    description: Ref the actions repository was checked out at
+    value: ${{ steps.resolve.outputs.ref }}
+  matched:
+    description: Whether the version came from the run's referenced workflows (false = fallback)
+    value: ${{ steps.resolve.outputs.matched }}
+
+# Bootstrap action: it runs before the actions repository exists in the
+# workspace, so workflows must reference it remotely
+# (OFA-Tech/.github/actions/setup/ofa-actions@main). Composite steps cannot
+# reference sibling actions by relative path, hence the pinned @main on the
+# resolver below — changes to these two actions only take effect once merged
+# to main.
+runs:
+  using: composite
+  steps:
+    - name: Resolve referenced actions version
+      id: resolve
+      uses: OFA-Tech/.github/actions/github/resolve-actions-version@main
+      with:
+        token: ${{ inputs.token }}
+        actions-repository: ${{ inputs.actions-repository }}
+        fallback-ref: ${{ inputs.fallback-ref }}
+
+    - name: Checkout OFA-Tech actions
+      uses: actions/checkout@v6
+      with:
+        repository: ${{ inputs.actions-repository }}
+        ref: ${{ steps.resolve.outputs.ref }}
+        token: ${{ inputs.token }}
+        path: ${{ inputs.path }}

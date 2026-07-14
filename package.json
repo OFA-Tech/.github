@@ -1,0 +1,27 @@
+{
+  "name": "@ofa-tech/actions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reusable TypeScript action library shared across OFA-Tech repositories.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build/bundle.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "tsc --noEmit",
+    "all": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/exec": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@vercel/ncc": "^0.38.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

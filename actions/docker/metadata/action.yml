@@ -1,0 +1,56 @@
+name: Docker Image Metadata
+description: Resolve docker image metadata (registry, account, repository) and generate the next version tag.
+
+inputs:
+  registry:
+    description: Docker registry host (for example ghcr.io, docker.io)
+    required: false
+    default: docker.io
+  namespace:
+    description: Optional explicit namespace override
+    required: false
+    default: ""
+  repository:
+    description: Optional explicit repository override
+    required: false
+    default: ""
+  tag:
+    description: Optional explicit version tag override (skips version generation)
+    required: false
+    default: ""
+  environment:
+    description: Build environment (development, staging, production)
+    required: false
+    default: "production"
+  username:
+    description: Optional explicit registry username override
+    required: false
+    default: ""
+  token:
+    description: Optional registry token used for Docker Hub tag lookups
+    required: false
+    default: ""
+
+outputs:
+  registry:
+    description: Resolved docker registry
+  account:
+    description: Resolved docker account/namespace
+  image-name:
+    description: Resolved docker repository (image name only)
+  image:
+    description: Resolved docker image path without tag
+  version:
+    description: Resolved docker image version tag value
+  image-version-tag:
+    description: Resolved docker image with version tag
+  image-latest-tag:
+    description: Resolved docker image latest tag
+
+# Resolution rules (account/repository fallbacks, branch-based version
+# bumping, Docker Hub collision checks) live in TypeScript. See the
+# entrypoint at src/application/docker/actions/docker-metadata-action.ts and
+# the Docker application area. The bundle is committed under dist/.
+runs:
+  using: node20
+  main: ../../../dist/docker-metadata/index.js

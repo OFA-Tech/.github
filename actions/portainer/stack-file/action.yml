@@ -32,35 +32,26 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        source "$GITHUB_ACTION_PATH/../../../scripts/portainer/common.sh"
 
-        PORTAINER_URL="${{ inputs.portainer-url }}"
-        PORTAINER_URL="${PORTAINER_URL%/}"
+        PORTAINER_URL="$(portainer_normalize_url "${{ inputs.portainer-url }}")"
         API_KEY="${{ inputs.api-key }}"
         STACK_ID="${{ inputs.stack-id }}"
         VERSION="${{ inputs.version }}"
 
-        fail() {
-          echo "$1" >&2
-          exit 1
-        }
+        common_require_cmd curl
+        common_require_cmd jq
 
-        require_cmd() {
-          command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
-        }
-
-        require_cmd curl
-        require_cmd jq
-
-        URL="${PORTAINER_URL}/api/stacks/${STACK_ID}/file"
+        FILE_PATH="/api/stacks/${STACK_ID}/file"
         if [[ -n "$VERSION" ]]; then
-          URL="${URL}?version=${VERSION}"
+          FILE_PATH="${FILE_PATH}?version=${VERSION}"
         fi
 
-        FILE_JSON="$(curl -fsSL -H "X-API-Key: ${API_KEY}" "$URL")"
+        FILE_JSON="$(portainer_api_get "$PORTAINER_URL" "$API_KEY" "$FILE_PATH")"
         STACK_FILE_CONTENT="$(jq -r '.StackFileContent // empty' <<<"$FILE_JSON")"
 
         if [[ -z "$STACK_FILE_CONTENT" ]]; then
-          fail "Stack file content is empty or missing in response"
+          common_fail "Stack file content is empty or missing in response"
         fi
 
         {
