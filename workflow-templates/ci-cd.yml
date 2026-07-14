@@ -11,9 +11,12 @@ on:
 
 jobs:
   pipeline:
+    # actions: read is required by the resolve-actions-version lookup inside
+    # the reusable stages; called workflows can never exceed these grants.
     permissions:
       contents: write
       packages: write
+      actions: read
     uses: OFA-Tech/.github/.github/workflows/ci-cd.yml@main
     with:
       gh-runner: self-hosted

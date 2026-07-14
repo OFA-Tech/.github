@@ -207,8 +207,15 @@ on:
         required: true
 
 
+# Each job passes through exactly the permissions its stage's jobs declare;
+# the workflow that calls ci-cd.yml must grant at least this union
+# (contents: read, packages: write, actions: read — see workflow-templates).
 jobs:
   build-docker:
+    permissions:
+      contents: read
+      packages: write
+      actions: read
     uses: ./.github/workflows/stage-build.yml
     with:
       gh-runner: ${{ inputs.gh-runner }}
@@ -241,6 +248,9 @@ jobs:
   deploy-portainer:
     if: ${{ inputs.run-deploy }}
     needs: [build-docker]
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/stage-deploy-portainer.yml
     with:
       gh-runner: ${{ inputs.gh-runner }}
@@ -262,6 +272,8 @@ jobs:
   post-deploy:
     if: ${{  inputs.run-post-deploy-tests }}
     needs: [build-docker, deploy-portainer]
+    permissions:
+      contents: read
     uses: ./.github/workflows/stage-post-deploy.yml
     with:
       gh-runner: ${{ inputs.gh-runner }}
@@ -272,6 +284,9 @@ jobs:
   auto-rollback:
     if: ${{needs.post-deploy.result == 'failure'}}
     needs: [build-docker, deploy-portainer,  post-deploy]
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/stage-rollback-portainer.yml
     with:
       gh-runner: ${{ inputs.gh-runner }}
