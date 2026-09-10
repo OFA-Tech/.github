@@ -36,4 +36,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=OFA-Tech_HuskyHub_e856fc25-36e2-40ee-9e9b-9af8b043b474 -Dsonar.projectName='HuskyHub'
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=<YOUR_PROJECT_KEY> -Dsonar.projectName='<YOUR_PROJECT_NAME>'
