@@ -17,7 +17,7 @@ runs:
     # older majors target the removed node20 runtime and warn on every run.
     - name: Setup .NET
       if: ${{ inputs.language == 'dotnet' }}
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       env:
         # Self-hosted runners may not have permission to write /usr/share/dotnet.
         DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
@@ -26,32 +26,32 @@ runs:
 
     - name: Setup Node.js
       if: ${{ inputs.language == 'node' }}
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.version }}
 
     - name: Setup Java
       if: ${{ inputs.language == 'java' }}
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v6
       with:
         distribution: ${{ inputs.distribution }}
         java-version: ${{ inputs.version }}
 
     - name: Setup Python
       if: ${{ inputs.language == 'python' }}
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ inputs.version }}
 
     - name: Setup Go
       if: ${{ inputs.language == 'go' }}
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version: ${{ inputs.version }}
 
     - name: Setup PHP
       if: ${{ inputs.language == 'php' }}
-      uses: shivammathur/setup-php@v2
+      uses: shivammathur/setup-php@2.37.2
       with:
         php-version: ${{ inputs.version }}
 

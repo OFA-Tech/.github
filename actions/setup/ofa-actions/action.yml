@@ -49,7 +49,7 @@ runs:
         fallback-ref: ${{ inputs.fallback-ref }}
 
     - name: Checkout OFA-Tech actions
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: ${{ inputs.actions-repository }}
         ref: ${{ steps.resolve.outputs.ref }}
