@@ -49,7 +49,7 @@ Main orchestration entrypoint (`workflow_call`) for build, image, deploy, post-d
 ### Core input domains
 
 - Runtime and language setup (`language`, `language-version`, etc.)
-- Build/test toggles and command overrides
+- Build/verify/test toggles and command overrides
 - Sonar toggles and exclusions
 - Docker image generation parameters
 - Portainer deploy parameters
@@ -62,7 +62,11 @@ Main orchestration entrypoint (`workflow_call`) for build, image, deploy, post-d
 
 Two-job stage:
 
-- `build`: checkout, resolve defaults, setup runtime, build, tests, optional Sonar scan + optional quality gate
+- `build`: checkout, resolve defaults, setup runtime, build, optional verification, tests, optional Sonar scan + optional quality gate
+  - Verification (`run-verify` + `verify-command`, off by default) runs right after the build and
+    before the tests, in `working-directory`. Use it for project-specific checks that need the build
+    output and should stop the pipeline early - e.g. EF Core migration drift, generated code being
+    up to date. Keep the logic in a script in the consumer repository; the stage only runs it.
 - `docker`: optional image build + push via `actions/docker/build-image` (metadata/versioning resolved by the TypeScript bundle, docker CLI steps in shell)
 
 This stage emits image metadata for downstream deploy steps.

@@ -48,6 +48,16 @@ on:
         required: false
         type: string
         default: ""
+      run-verify:
+        description: Enables the verification step (runs after build, before tests)
+        required: false
+        type: boolean
+        default: false
+      verify-command:
+        description: Project-specific check that needs the build output (e.g. migration drift, generated code up to date)
+        required: false
+        type: string
+        default: ""
       run-unit-tests:
         description: Enables unit test step
         required: false
@@ -173,6 +183,13 @@ jobs:
         uses: ./.ofa-tech-actions/actions/run-command
         with:
           command: ${{ steps.defaults.outputs.build-command }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run verification
+        if: ${{ inputs.run-verify && inputs.verify-command != '' }}
+        uses: ./.ofa-tech-actions/actions/run-command
+        with:
+          command: ${{ inputs.verify-command }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run unit tests

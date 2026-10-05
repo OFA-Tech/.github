@@ -30,6 +30,9 @@ jobs:
       working-directory: "."
       build-command: ""
 
+      run-verify: false
+      verify-command: ""
+
       run-unit-tests: true
       unit-test-command: ""
       run-integration-tests: false

@@ -60,6 +60,16 @@ on:
         required: false
         type: string
         default: ""
+      run-verify:
+        description: Enables the verification step (runs after build, before tests)
+        required: false
+        type: boolean
+        default: false
+      verify-command:
+        description: Project-specific check that needs the build output (e.g. migration drift, generated code up to date)
+        required: false
+        type: string
+        default: ""
       run-unit-tests:
         description: Enables unit test step
         required: false
@@ -227,6 +237,8 @@ jobs:
       language-distribution: ${{ inputs.language-distribution }}
       working-directory: ${{ inputs.working-directory }}
       build-command: ${{ inputs.build-command }}
+      run-verify: ${{ inputs.run-verify }}
+      verify-command: ${{ inputs.verify-command }}
       run-unit-tests: ${{ inputs.run-unit-tests }}
       unit-test-command: ${{ inputs.unit-test-command }}
       run-integration-tests: ${{ inputs.run-integration-tests }}
